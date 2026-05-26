@@ -5,10 +5,11 @@ import { Lock, User, AlertCircle, MapPin } from 'lucide-react';
 const API = '/api';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState(() => localStorage.getItem('driver_user') || '');
+  const [password, setPassword] = useState(() => localStorage.getItem('driver_pass') || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [keep, setKeep] = useState(() => !!localStorage.getItem('driver_user'));
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,6 +36,13 @@ export default function Login() {
 
       const driver = await res.json();
       localStorage.setItem('driver', JSON.stringify(driver));
+      if (keep) {
+        localStorage.setItem('driver_user', username);
+        localStorage.setItem('driver_pass', password);
+      } else {
+        localStorage.removeItem('driver_user');
+        localStorage.removeItem('driver_pass');
+      }
       navigate('/', { replace: true });
     } catch {
       setError('Erro de conexão');
@@ -66,7 +74,7 @@ export default function Login() {
                 type="text"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
-                placeholder="thiago.motorista"
+                placeholder="Seu usuário"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 required
                 autoCapitalize="none"
@@ -98,8 +106,11 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-gray-400 mt-2">Usuário: thiago.motorista | Senha: thiago.guimaraes</p>
-        <p className="text-center text-xs text-gray-400">Usuário: thiago.gordo | Senha: thiago.guimaraes</p>
+        <label className="flex items-center gap-2 text-sm text-gray-500 mt-3 cursor-pointer">
+          <input type="checkbox" checked={keep} onChange={e => setKeep(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-500" />
+          Manter conectado
+        </label>
       </div>
 
       <div className="flex items-center gap-1 text-blue-200 text-xs mt-8">

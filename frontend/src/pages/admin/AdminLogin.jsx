@@ -4,9 +4,10 @@ import { HardHat, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(() => localStorage.getItem('admin_email') || '');
+  const [password, setPassword] = useState(() => localStorage.getItem('admin_pass') || '');
   const [show, setShow] = useState(false);
+  const [keep, setKeep] = useState(() => !!localStorage.getItem('admin_email'));
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -16,6 +17,13 @@ export default function AdminLogin() {
     setLoading(true);
     try {
       await login(email, password);
+      if (keep) {
+        localStorage.setItem('admin_email', email);
+        localStorage.setItem('admin_pass', password);
+      } else {
+        localStorage.removeItem('admin_email');
+        localStorage.removeItem('admin_pass');
+      }
       window.location.href = '/admin';
     } catch (err) {
       setError(err.message);
@@ -43,7 +51,7 @@ export default function AdminLogin() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="guimaraes@admin.com"
+              placeholder="Seu email"
               className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               required
             />
@@ -53,7 +61,7 @@ export default function AdminLogin() {
             <input
               type={show ? 'text' : 'password'} value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Sua senha"
               className="w-full border border-gray-300 rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               required
             />
@@ -62,6 +70,11 @@ export default function AdminLogin() {
               {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input type="checkbox" checked={keep} onChange={e => setKeep(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-500" />
+            Manter conectado
+          </label>
           <button type="submit" disabled={loading}
             className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50">
             {loading ? 'Entrando...' : 'Entrar'}

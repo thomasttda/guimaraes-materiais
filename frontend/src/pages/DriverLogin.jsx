@@ -5,10 +5,11 @@ import { Truck, Lock, User, AlertCircle } from 'lucide-react';
 const API_URL = '/api';
 
 export default function DriverLogin() {
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState(() => localStorage.getItem('driver_user') || '');
+  const [password, setPassword] = useState(() => localStorage.getItem('driver_pass') || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [keep, setKeep] = useState(() => !!localStorage.getItem('driver_user'));
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -20,7 +21,7 @@ export default function DriverLogin() {
       const res = await fetch(`${API_URL}/drivers/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       if (!res.ok) {
@@ -31,6 +32,13 @@ export default function DriverLogin() {
 
       const driver = await res.json();
       localStorage.setItem('driver', JSON.stringify(driver));
+      if (keep) {
+        localStorage.setItem('driver_user', username);
+        localStorage.setItem('driver_pass', password);
+      } else {
+        localStorage.removeItem('driver_user');
+        localStorage.removeItem('driver_pass');
+      }
       navigate('/entregador');
     } catch (err) {
       setError('Erro de conexão. Tente novamente.');
@@ -42,7 +50,6 @@ export default function DriverLogin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-primary-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Truck className="w-10 h-10 text-white" />
@@ -60,14 +67,14 @@ export default function DriverLogin() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Usuário</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="(11) 98888-1111"
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="Seu usuário"
                 required
                 className="input-field pl-10"
               />
@@ -88,6 +95,12 @@ export default function DriverLogin() {
             </div>
           </div>
 
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input type="checkbox" checked={keep} onChange={e => setKeep(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-500" />
+            Manter conectado
+          </label>
+
           <button
             type="submit"
             disabled={loading}
@@ -97,11 +110,6 @@ export default function DriverLogin() {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Senha padrão: 123456</p>
-          <p className="mt-1">Contate o administrador para alterar</p>
-        </div>
 
         <div className="mt-6 pt-6 border-t text-center">
           <a href="/" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
