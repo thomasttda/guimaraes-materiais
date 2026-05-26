@@ -1,0 +1,17 @@
+{
+  "name": "guimaraes",
+  "version": "1.0.0",
+  "description": "Sistema completo para loja de materiais de construção com catálogo, carrinho, orçamento, painel administrativo financeiro, entregas, CRM e muito mais.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docs": "node scripts/update-docs.js",
+    "docs:screenshots": "node scripts/capture-screenshots.js",
+    "docs:report": "node scripts/generate-report.js",
+    "docs:presentation": "node scripts/generate-presentation.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
