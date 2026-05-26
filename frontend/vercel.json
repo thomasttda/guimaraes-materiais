@@ -4,10 +4,10 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://guimaraes-api.vercel.app/api/$1" },
+    { "source": "/api/(.*)", "destination": "https://guimaraes-materiais.vercel.app/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "env": {
-    "VITE_API_URL": "https://guimaraes-api.vercel.app"
+    "VITE_API_URL": "https://guimaraes-materiais.vercel.app"
   }
 }
