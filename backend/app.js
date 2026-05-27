@@ -951,6 +951,11 @@ app.post('/api/notes', async (req, res) => {
 app.put('/api/notes/:id', async (req, res) => {
   const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method', 'pix_discount'];
   const updates = {};
+  let oldStatus;
+  if (req.body.status !== undefined) {
+    const old = await queryOne('notes', { where: [{ field: 'id', value: req.params.id }] });
+    oldStatus = old?.status;
+  }
   for (const f of fields) {
     if (req.body[f] !== undefined) updates[f] = req.body[f];
   }
@@ -967,12 +972,38 @@ app.put('/api/notes/:id', async (req, res) => {
     }
   }
   if (!data.length) return res.status(404).json({ error: 'Nota não encontrada' });
-  res.json(data[0]);
+  const updated = data[0];
+  if (oldStatus && updated.status !== oldStatus) {
+    await logAdminAction(
+      { name: req.body.attendant_name || 'Sistema' },
+      'status_change', 'note', updated.id,
+      `${updated.number}: ${oldStatus} → ${updated.status}`,
+      { from: oldStatus, to: updated.status }
+    );
+  }
+  res.json(updated);
 });
 
 app.delete('/api/notes/:id', async (req, res) => {
   await remove('notes', 'id', req.params.id);
   res.json({ message: 'Nota removida' });
+});
+
+// ==================== ADMIN ACTIVITY LOGS ====================
+
+app.get('/api/admin/activity-logs/admin', async (req, res) => {
+  const { resource_type, resource_id, limit } = req.query;
+  let query = supabase.from('admin_activity_logs').select('*').order('created_at', { ascending: true });
+  if (resource_type) query = query.eq('resource_type', resource_type);
+  if (resource_id) {
+    const ids = resource_id.split(',').map(Number).filter(n => !isNaN(n));
+    if (ids.length === 1) query = query.eq('resource_id', ids[0]);
+    else if (ids.length > 1) query = query.in('resource_id', ids);
+  }
+  if (limit) query = query.limit(parseInt(limit));
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
 });
 
 // ==================== PDF / PRINT ====================

@@ -17,6 +17,7 @@ import AdminFinanceiro from './pages/admin/AdminFinanceiro';
 import AdminContas from './pages/admin/AdminContas';
 import AdminEntregas from './pages/admin/AdminEntregas';
 import AdminClientes from './pages/admin/AdminClientes';
+import AdminClienteDetalhe from './pages/admin/AdminClienteDetalhe';
 import AdminCupons from './pages/admin/AdminCupons';
 import AdminFornecedores from './pages/admin/AdminFornecedores';
 import AdminNotificacoes from './pages/admin/AdminNotificacoes';
@@ -61,6 +62,7 @@ function App() {
             <Route path="/admin/contas" element={<ProtectedRoute><AdminContas /></ProtectedRoute>} />
             <Route path="/admin/entregas" element={<ProtectedRoute><AdminEntregas /></ProtectedRoute>} />
             <Route path="/admin/clientes" element={<ProtectedRoute><AdminClientes /></ProtectedRoute>} />
+<Route path="/admin/clientes/:id" element={<ProtectedRoute><AdminClienteDetalhe /></ProtectedRoute>} />
             <Route path="/admin/cupons" element={<ProtectedRoute><AdminCupons /></ProtectedRoute>} />
             <Route path="/admin/fornecedores" element={<ProtectedRoute><AdminFornecedores /></ProtectedRoute>} />
             <Route path="/admin/notificacoes" element={<ProtectedRoute><AdminNotificacoes /></ProtectedRoute>} />
