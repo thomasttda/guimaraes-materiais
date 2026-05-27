@@ -850,7 +850,30 @@ app.get('/api/notes/:id', async (req, res) => {
 app.post('/api/notes', async (req, res) => {
   const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method, pix_discount } = req.body;
   const number = await generateNoteNumber(type, customer_name);
-  const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0 });
+
+  // Auto-register customer if not exists
+  if (customer_name && customer_phone) {
+    const existing = await queryOne('customers', { where: [{ field: 'phone', value: customer_phone }] });
+    if (!existing) {
+      await supabase.from('customers').insert({
+        name: customer_name, phone: customer_phone,
+        email: customer_email || '', address: customer_address || '',
+        cpf: customer_cpf || '', city: '', state: '', notes: ''
+      }).select();
+    }
+  }
+
+  // Try with pix_discount first (for databases that have the column), fallback without
+  let data;
+  try {
+    data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0 });
+  } catch (e) {
+    if (e.message && e.message.includes('pix_discount')) {
+      data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
+    } else {
+      throw e;
+    }
+  }
   res.status(201).json(data[0]);
 });
 
@@ -861,7 +884,17 @@ app.put('/api/notes/:id', async (req, res) => {
     if (req.body[f] !== undefined) updates[f] = req.body[f];
   }
   if (req.body.items) updates.items = req.body.items;
-  const data = await update('notes', updates, 'id', req.params.id);
+  let data;
+  try {
+    data = await update('notes', updates, 'id', req.params.id);
+  } catch (e) {
+    if (e.message && e.message.includes('pix_discount')) {
+      delete updates.pix_discount;
+      data = await update('notes', updates, 'id', req.params.id);
+    } else {
+      throw e;
+    }
+  }
   if (!data.length) return res.status(404).json({ error: 'Nota não encontrada' });
   res.json(data[0]);
 });
