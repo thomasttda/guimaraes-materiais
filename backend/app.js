@@ -798,30 +798,57 @@ app.delete('/api/suppliers/:id', async (req, res) => {
 // ==================== SELLERS ====================
 
 app.get('/api/sellers', async (req, res) => {
-  const data = await queryAll('sellers', { where: [{ field: 'active', value: 1 }], order: { field: 'name', ascending: true } });
-  res.json(data);
+  const data = await supabase.from('sellers').select('id, name, phone, email, active, created_at').eq('active', 1).order('name', { ascending: true });
+  res.json(data.data || []);
 });
 
+async function syncSellerAdminUser(seller, password) {
+  if (!seller.email) return;
+  const existing = await queryOne('admin_users', { where: [{ field: 'email', value: seller.email }] });
+  const userData = { name: seller.name, email: seller.email, password: password || 'guimaraes@2026', role: 'seller', active: seller.active !== undefined ? seller.active : 1 };
+  if (existing) {
+    await update('admin_users', userData, 'id', existing.id);
+  } else {
+    await supabase.from('admin_users').insert(userData).select();
+  }
+}
+
+function sanitizeSeller(s) {
+  if (!s) return s;
+  const { password, ...rest } = s;
+  return rest;
+}
+
 app.post('/api/sellers', async (req, res) => {
-  const { name, phone, email } = req.body;
+  const { name, phone, email, password } = req.body;
   if (!name) return res.status(400).json({ error: 'Nome é obrigatório' });
-  const data = await insert('sellers', { name, phone: phone || '', email: email || '' });
-  res.status(201).json(data[0]);
+  const data = await insert('sellers', { name, phone: phone || '', email: email || '', password: password || 'guimaraes@2026' });
+  const seller = data[0];
+  if (seller.email) await syncSellerAdminUser(seller, password);
+  res.status(201).json(sanitizeSeller(seller));
 });
 
 app.put('/api/sellers/:id', async (req, res) => {
-  const { name, phone, email } = req.body;
+  const { name, phone, email, password } = req.body;
   const updates = {};
   if (name !== undefined) updates.name = name;
   if (phone !== undefined) updates.phone = phone;
   if (email !== undefined) updates.email = email;
+  if (password !== undefined) updates.password = password;
   const data = await update('sellers', updates, 'id', req.params.id);
   if (!data.length) return res.status(404).json({ error: 'Vendedor não encontrado' });
-  res.json(data[0]);
+  const seller = data[0];
+  if (seller.email) await syncSellerAdminUser(seller, password);
+  res.json(sanitizeSeller(seller));
 });
 
 app.delete('/api/sellers/:id', async (req, res) => {
+  const seller = await queryOne('sellers', { where: [{ field: 'id', value: req.params.id }] });
   await update('sellers', { active: 0 }, 'id', req.params.id);
+  if (seller && seller.email) {
+    const adminUser = await queryOne('admin_users', { where: [{ field: 'email', value: seller.email }] });
+    if (adminUser) await update('admin_users', { active: 0 }, 'id', adminUser.id);
+  }
   res.json({ message: 'Vendedor removido' });
 });
 
@@ -856,6 +883,18 @@ app.get('/api/notes', async (req, res) => {
   data.forEach(n => { n.items = parseItems(n.items); });
   res.json(data);
 });
+
+async function logAdminAction(userInfo, action, resourceType, resourceId, description, details) {
+  try {
+    await supabase.from('admin_activity_logs').insert({
+      user_id: userInfo?.id || null,
+      user_name: userInfo?.name || 'Sistema',
+      action, resource_type: resourceType, resource_id: resourceId,
+      description: description || '',
+      details: details || null
+    }).select();
+  } catch {}
+}
 
 function parseItems(items) {
   if (Array.isArray(items)) return items;
@@ -904,7 +943,9 @@ app.post('/api/notes', async (req, res) => {
       throw e;
     }
   }
-  res.status(201).json(data[0]);
+  const noteData = data[0];
+  await logAdminAction({ name: attendant_name || 'Sistema' }, 'create', 'note', noteData?.id, `${type === 'quote' ? 'Orçamento' : 'Venda'} ${number} - ${customer_name}`);
+  res.status(201).json(noteData);
 });
 
 app.put('/api/notes/:id', async (req, res) => {

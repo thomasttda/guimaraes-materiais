@@ -7,7 +7,7 @@ const API_URL = '/api';
 export default function AdminVendedores() {
   const [sellers, setSellers] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', email: '' });
+  const [form, setForm] = useState({ name: '', phone: '', email: '', password: '' });
 
   useEffect(() => { fetchData(); }, []);
 
@@ -26,7 +26,7 @@ export default function AdminVendedores() {
         body: JSON.stringify(form)
       });
       fetchData();
-      setForm({ name: '', phone: '', email: '' });
+      setForm({ name: '', phone: '', email: '', password: '' });
       setShowForm(false);
     } catch { alert('Erro ao salvar vendedor'); }
   };
@@ -61,7 +61,7 @@ export default function AdminVendedores() {
                   <div>
                     <p className="font-bold text-gray-800">{s.name}</p>
                     {s.phone && <p className="text-sm text-gray-500 flex items-center gap-1 mt-1"><Phone className="w-3 h-3" /> {s.phone}</p>}
-                    {s.email && <p className="text-sm text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3" /> {s.email}</p>}
+                    {s.email && <p className="text-sm text-gray-500 flex items-center gap-1"><Mail className="w-3 h-3" /> {s.email} <span className="text-green-600 text-xs font-medium">(acesso admin)</span></p>}
                   </div>
                 </div>
                 <button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 className="w-4 h-4" /></button>
@@ -88,8 +88,12 @@ export default function AdminVendedores() {
                   <input type="text" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="input-field" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <label className="block text-sm font-medium mb-1">Email (login)</label>
                   <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Senha (login)</label>
+                  <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="input-field" placeholder="guimaraes@2026" />
                 </div>
                 <button type="submit" className="w-full btn-primary py-3 rounded-xl">Salvar</button>
               </form>
