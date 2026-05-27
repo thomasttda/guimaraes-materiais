@@ -145,6 +145,9 @@ export default function AdminNotaView() {
                 {note.type === 'sale' && note.payment_method && (
                   <p className="text-blue-200 text-sm mt-1">Pagamento: {note.payment_method}</p>
                 )}
+                {note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 && (
+                  <p className="text-blue-200 text-xs mt-1">Desc. PIX: R$ {parseFloat(note.pix_discount).toFixed(2).replace('.', ',')}</p>
+                )}
               </div>
             </div>
           </div>
@@ -211,6 +214,12 @@ export default function AdminNotaView() {
                   <span>TOTAL:</span>
                   <span>R$ {note.total.toFixed(2).replace('.', ',')}</span>
                 </div>
+                {note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 && (
+                  <div className="flex justify-between py-2 text-sm font-bold text-green-600">
+                    <span>Pagamento via PIX:</span>
+                    <span>R$ {(note.total - parseFloat(note.pix_discount || 0)).toFixed(2).replace('.', ',')}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -22,7 +22,7 @@ export default function AdminNotaCreate() {
     customer_name: '', customer_phone: '', customer_email: '',
     customer_address: '', customer_cpf: '', attendant_name: '',
     items: [], subtotal: 0, discount: 0, discount_type: 'fixed',
-    total: 0, observations: '', payment_method: ''
+    total: 0, observations: '', payment_method: '', pix_discount: 0
   });
 
   useEffect(() => {
@@ -330,12 +330,26 @@ export default function AdminNotaCreate() {
                     <input type="number" step="0.01" value={note.discount} onChange={e => setNote({...note, discount: parseFloat(e.target.value) || 0})} className="input-field text-sm" />
                   </div>
                 </div>
+                {note.payment_method === 'PIX' && (
+                  <div className="border-t pt-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Desconto PIX (R$)</label>
+                    <input type="number" step="0.01" value={note.pix_discount} onChange={e => setNote({...note, pix_discount: parseFloat(e.target.value) || 0})} className="input-field text-sm" />
+                  </div>
+                )}
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-xl font-bold">
                     <span>Total</span>
                     <span className="text-primary-600">R$ {total.toFixed(2).replace('.', ',')}</span>
                   </div>
                 </div>
+                {note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 && (
+                  <div className="pt-2">
+                    <div className="flex justify-between text-sm font-bold text-green-600">
+                      <span>Pagamento via PIX:</span>
+                      <span>R$ {(total - parseFloat(note.pix_discount || 0)).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 space-y-3">

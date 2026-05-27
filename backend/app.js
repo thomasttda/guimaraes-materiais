@@ -848,14 +848,14 @@ app.get('/api/notes/:id', async (req, res) => {
 });
 
 app.post('/api/notes', async (req, res) => {
-  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method } = req.body;
+  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method, pix_discount } = req.body;
   const number = await generateNoteNumber(type, customer_name);
-  const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
+  const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0 });
   res.status(201).json(data[0]);
 });
 
 app.put('/api/notes/:id', async (req, res) => {
-  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method'];
+  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method', 'pix_discount'];
   const updates = {};
   for (const f of fields) {
     if (req.body[f] !== undefined) updates[f] = req.body[f];
@@ -1004,6 +1004,7 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
         <tr><td class="label">Subtotal:</td><td class="val">${fmtMoney(subtotal)}</td></tr>
         ${note.discount > 0 ? `<tr><td class="label">Desconto (${note.discount_type === 'percentage' ? note.discount + '%' : 'R$'}):</td><td class="val">- ${fmtMoney(discountAmount)}</td></tr>` : ''}
         <tr class="line"><td class="big">TOTAL:</td><td class="val big">${fmtMoney(note.total)}</td></tr>
+        ${note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 ? `<tr><td class="label" style="padding-top:8px;font-weight:bold;color:#16a34a">Pagamento via PIX:</td><td class="val" style="padding-top:8px;font-weight:bold;color:#16a34a">${fmtMoney(note.total - (parseFloat(note.pix_discount) || 0))}</td></tr><tr><td class="label" style="color:#16a34a;font-size:9px">(desconto PIX: ${fmtMoney(note.pix_discount)})</td><td class="val" style="color:#16a34a;font-size:9px"></td></tr>` : ''}
       </table>
     </div>
   </div>
