@@ -20,11 +20,12 @@ export default function AdminVendedores() {
     e.preventDefault();
     if (!form.name.trim()) return alert('Nome é obrigatório');
     try {
-      await fetch(`${API_URL}/sellers`, {
+      const res = await fetch(`${API_URL}/sellers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); alert(err.error || 'Erro ao salvar vendedor'); return; }
       fetchData();
       setForm({ name: '', phone: '', email: '', password: '' });
       setShowForm(false);
