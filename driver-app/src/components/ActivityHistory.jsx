@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, MapPin, Truck, CheckCircle2, Navigation, Play, Coffee, Utensils, LogOut, RotateCcw, MessageSquare, ListFilter } from 'lucide-react';
+import { Clock, MapPin, Truck, CheckCircle2, Play, Coffee, Utensils, LogOut, RotateCcw, MessageSquare } from 'lucide-react';
 
 const API = '/api';
 
@@ -14,8 +14,6 @@ const ACTION_ICONS = {
   'delivery.delivered': CheckCircle2,
   'delivery.checklist': CheckCircle2,
   'delivery.observation': MessageSquare,
-  'gps.stopped': MapPin,
-  'gps.driving': Navigation,
 };
 
 const ACTION_COLORS = {
@@ -29,8 +27,6 @@ const ACTION_COLORS = {
   'delivery.delivered': 'bg-green-100 text-green-600',
   'delivery.checklist': 'bg-teal-100 text-teal-600',
   'delivery.observation': 'bg-gray-100 text-gray-600',
-  'gps.stopped': 'bg-orange-100 text-orange-600',
-  'gps.driving': 'bg-indigo-100 text-indigo-600',
 };
 
 function getActionLabel(action) {
@@ -45,8 +41,6 @@ function getActionLabel(action) {
     'delivery.delivered': 'Entregue',
     'delivery.checklist': 'Checklist',
     'delivery.observation': 'Observação',
-    'gps.stopped': 'Parada',
-    'gps.driving': 'Em Movimento',
   };
   return labels[action] || action;
 }
@@ -54,25 +48,18 @@ function getActionLabel(action) {
 export default function ActivityHistory({ driver }) {
   const [logs, setLogs] = useState([]);
   const [filter, setFilter] = useState('all');
-  const [stops, setStops] = useState([]);
-  const [showMap, setShowMap] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     const data = await fetch(`${API}/drivers/${driver.id}/activity-logs?limit=200`).then(r => r.json()).catch(() => []);
-    setLogs(data);
+    // Filtrar pings de GPS (aparecem apenas no admin)
+    const filtered = data.filter(l => !l.action.startsWith('gps.'));
+    setLogs(filtered);
   }, [driver.id]);
 
-  const fetchStops = useCallback(async () => {
-    const data = await fetch(`${API}/drivers/${driver.id}/gps-stops`).then(r => r.json()).catch(() => []);
-    setStops(data);
-  }, [driver.id]);
-
-  useEffect(() => { fetchLogs(); fetchStops(); }, [fetchLogs, fetchStops]);
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
   const today = new Date().toISOString().split('T')[0];
   const todayLogs = logs.filter(l => l.created_at?.startsWith(today));
-  const todayStops = stops.filter(s => s.created_at?.startsWith(today));
-
   const filteredLogs = filter === 'all' ? todayLogs : todayLogs.filter(l => l.action === filter);
 
   const totalWorked = () => {
@@ -94,13 +81,12 @@ export default function ActivityHistory({ driver }) {
     { key: 'timeclock.lunch_end', label: 'Retorno' },
     { key: 'timeclock.exit', label: 'Saída' },
     { key: 'delivery.delivered', label: 'Entregas' },
-    { key: 'gps.stopped', label: 'Paradas' },
   ];
 
   return (
     <div className="p-4 pb-24 space-y-4">
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
           <Clock className="w-5 h-5 text-blue-600 mx-auto mb-1" />
           <p className="text-lg font-bold text-gray-800">{totalWorked() || '—'}</p>
@@ -111,51 +97,7 @@ export default function ActivityHistory({ driver }) {
           <p className="text-lg font-bold text-gray-800">{todayLogs.filter(l => l.action === 'delivery.delivered').length}</p>
           <p className="text-xs text-gray-500">Entregas</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
-          <MapPin className="w-5 h-5 text-orange-600 mx-auto mb-1" />
-          <p className="text-lg font-bold text-gray-800">{todayStops.length}</p>
-          <p className="text-xs text-gray-500">Paradas</p>
-        </div>
       </div>
-
-      {/* Stops Map Button */}
-      {todayStops.length > 0 && (
-        <button
-          onClick={() => setShowMap(!showMap)}
-          className="w-full bg-white rounded-2xl shadow-sm p-4 flex items-center justify-between"
-        >
-          <div className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-orange-600" />
-            <span className="font-medium text-gray-700">Ver paradas no mapa</span>
-          </div>
-          <span className="text-sm text-gray-400">{showMap ? '▲' : '▼'}</span>
-        </button>
-      )}
-
-      {/* Map Container */}
-      {showMap && todayStops.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div style={{ height: '400px' }}>
-            {todayStops.length === 1 ? (
-              <iframe
-                title="Paradas"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${todayStops[0].lng - 0.003}%2C${todayStops[0].lat - 0.003}%2C${todayStops[0].lng + 0.003}%2C${todayStops[0].lat + 0.003}&layer=mapnik&marker=${todayStops[0].lat}%2C${todayStops[0].lng}`}
-              />
-            ) : (
-              <iframe
-                title="Paradas"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${Math.min(...todayStops.map(s => s.lng)) - 0.01}%2C${Math.min(...todayStops.map(s => s.lat)) - 0.01}%2C${Math.max(...todayStops.map(s => s.lng)) + 0.01}%2C${Math.max(...todayStops.map(s => s.lat)) + 0.01}&layer=mapnik`}
-              />
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Filter */}
       <div className="flex gap-2 overflow-x-auto pb-2">

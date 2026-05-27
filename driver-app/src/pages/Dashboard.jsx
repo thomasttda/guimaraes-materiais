@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [tracking, setTracking] = useState(false);
   const [online, setOnline] = useState(true);
   const lastPos = useRef(null);
+  const lastLoggedPos = useRef(null);
   const pulseInterval = useRef(null);
   const navigate = useNavigate();
 
@@ -52,12 +53,22 @@ export default function Dashboard() {
       if (!lastPos.current) return;
       const { lat, lng, speed } = lastPos.current;
       const movement = speed > 0.5 ? 'driving' : 'stopped';
+      const wasMoving = lastLoggedPos.current?.speed > 0.5;
+      const moved = lastLoggedPos.current && (
+        Math.abs(lat - lastLoggedPos.current.lat) > 0.0005 ||
+        Math.abs(lng - lastLoggedPos.current.lng) > 0.0005
+      );
+      lastLoggedPos.current = { lat, lng, speed };
       fetch(`${API}/drivers/${d.id}/gps-pulse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng, speed, movement }),
+        body: JSON.stringify({
+          lat, lng, speed, movement,
+          moved: moved || false,
+          was_moving: wasMoving || false,
+        }),
       }).catch(() => {});
-    }, 60000);
+    }, 300000); // 5 minutes
   };
 
   const handleLogout = () => {
