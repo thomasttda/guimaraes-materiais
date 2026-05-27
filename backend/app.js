@@ -798,12 +798,23 @@ app.delete('/api/suppliers/:id', async (req, res) => {
 
 // ==================== NOTES ====================
 
-async function generateNoteNumber(type) {
+async function generateNoteNumber(type, customerName) {
   const prefix = type === 'quote' ? 'ORC' : 'VND';
   const year = new Date().getFullYear();
   const { count } = await supabase.from('notes').select('*', { count: 'exact', head: true }).eq('type', type);
   const num = (count || 0) + 1;
-  return `${prefix}-${year}-${String(num).padStart(4, '0')}`;
+  const seq = `${prefix}-${year}-${String(num).padStart(4, '0')}`;
+  if (!customerName) return seq;
+  const name = customerName
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .substring(0, 30)
+    .replace(/-+$/, '');
+  if (!name) return seq;
+  return `${seq}-${name}`;
 }
 
 app.get('/api/notes', async (req, res) => {
@@ -824,7 +835,7 @@ app.get('/api/notes/:id', async (req, res) => {
 
 app.post('/api/notes', async (req, res) => {
   const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method } = req.body;
-  const number = await generateNoteNumber(type);
+  const number = await generateNoteNumber(type, customer_name);
   const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
   res.status(201).json(data[0]);
 });
