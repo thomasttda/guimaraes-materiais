@@ -878,8 +878,8 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
   doc.text(`Tel: ${storePhone}`, 40, 70);
   doc.text(storeAddress, 40, 82, { width: 320 });
 
-  // Logo image (embedded base64, reduced 50%)
-  doc.image(Buffer.from(logoBase64, 'base64'), 420, 8, { width: 100, height: 70 });
+  // Logo on the right (with error protection)
+  try { doc.image(Buffer.from(logoBase64, 'base64'), 420, 8, { width: 100, height: 70 }); } catch {}
 
   // Type label on the right, below the logo
   const typeLabel = note.type === 'quote' ? 'ORÇAMENTO' : 'VENDA';
