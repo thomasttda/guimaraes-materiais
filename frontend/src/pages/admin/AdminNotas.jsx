@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, FileText, ShoppingCart, Eye, Download, Trash2, Search, Check, X } from 'lucide-react';
+import { ArrowLeft, Plus, FileText, ShoppingCart, Eye, Download, Trash2, Search, Share2, MessageCircle } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -28,6 +28,21 @@ export default function AdminNotas() {
     if (!confirm('Remover esta nota?')) return;
     await fetch(`${API_URL}/notes/${id}`, { method: 'DELETE' });
     fetchNotes();
+  };
+
+  const handleShare = async (note) => {
+    const pdfUrl = `${window.location.origin}${API_URL}/notes/${note.id}/pdf`;
+    const text = `Guimarães Materiais para Construção\nNota: ${note.number}\nCliente: ${note.customer_name}\nTotal: R$ ${note.total.toFixed(2).replace('.', ',')}\n\n${pdfUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Nota ${note.number}`, text, url: pdfUrl });
+        return;
+      } catch {}
+    }
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const filteredNotes = notes.filter(n =>
@@ -128,14 +143,15 @@ export default function AdminNotas() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">{note.customer_name} • {note.customer_phone}</p>
-                    <p className="text-xs text-gray-500">{new Date(note.created_at).toLocaleDateString('pt-BR')} • {note.items?.length || 0} itens</p>
+                    <p className="text-xs text-gray-500">{new Date(note.created_at).toLocaleDateString('pt-BR')} • {note.items?.length || 0} itens{note.payment_method ? ` • ${note.payment_method}` : ''}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <p className="text-xl font-bold text-primary-600">R$ {note.total.toFixed(2).replace('.', ',')}</p>
                   <div className="flex gap-2">
                     <Link to={`/admin/notas/${note.id}`} className="text-blue-600 hover:text-blue-800 p-2"><Eye className="w-5 h-5" /></Link>
-                    <a href={`${API_URL}/notes/${note.id}/pdf`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-800 p-2"><Download className="w-5 h-5" /></a>
+                    <a href={`${API_URL}/notes/${note.id}/pdf`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-800 p-2" title="Baixar PDF"><Download className="w-5 h-5" /></a>
+                    <button onClick={() => handleShare(note)} className="text-emerald-600 hover:text-emerald-800 p-2" title="Compartilhar via WhatsApp"><Share2 className="w-5 h-5" /></button>
                     <button onClick={() => handleDelete(note.id)} className="text-red-600 hover:text-red-800 p-2"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </div>

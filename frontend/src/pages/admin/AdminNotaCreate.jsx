@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, FileText, ShoppingCart, User, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, FileText, ShoppingCart, User, Search, Minus, Check } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -12,14 +12,17 @@ export default function AdminNotaCreate() {
   const [settings, setSettings] = useState({});
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [showQtyModal, setShowQtyModal] = useState(false);
   const [searchProduct, setSearchProduct] = useState('');
   const [searchCustomer, setSearchCustomer] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedQty, setSelectedQty] = useState(1);
 
   const [note, setNote] = useState({
     customer_name: '', customer_phone: '', customer_email: '',
     customer_address: '', customer_cpf: '', attendant_name: '',
     items: [], subtotal: 0, discount: 0, discount_type: 'fixed',
-    total: 0, observations: ''
+    total: 0, observations: '', payment_method: ''
   });
 
   useEffect(() => {
@@ -28,20 +31,31 @@ export default function AdminNotaCreate() {
     fetch(`${API_URL}/settings`).then(res => res.json()).then(setSettings).catch(() => {});
   }, []);
 
-  const addItem = (product) => {
+  const openQtySelector = (product) => {
     const existing = note.items.find(i => i.id === product.id);
+    setSelectedProduct(product);
+    setSelectedQty(existing ? existing.quantity + 1 : 1);
+    setShowQtyModal(true);
+    setShowProductModal(false);
+  };
+
+  const confirmAddItem = () => {
+    if (!selectedProduct) return;
+    const existing = note.items.find(i => i.id === selectedProduct.id);
     if (existing) {
-      updateItem(product.id, 'quantity', existing.quantity + 1);
+      updateItem(selectedProduct.id, 'quantity', existing.quantity + selectedQty);
     } else {
       setNote(prev => ({
         ...prev,
         items: [...prev.items, {
-          id: product.id, name: product.name, price: product.price,
-          unit: product.unit, quantity: 1
+          id: selectedProduct.id, name: selectedProduct.name, price: selectedProduct.price,
+          unit: selectedProduct.unit, quantity: selectedQty
         }]
       }));
     }
-    setShowProductModal(false);
+    setShowQtyModal(false);
+    setSelectedProduct(null);
+    setSelectedQty(1);
     setSearchProduct('');
   };
 
@@ -78,7 +92,7 @@ export default function AdminNotaCreate() {
 
   const calculateTotals = () => {
     const subtotal = note.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : note.discount;
+    const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : (note.discount || 0);
     const total = Math.max(0, subtotal - discountAmount);
     return { subtotal, total };
   };
@@ -120,6 +134,14 @@ export default function AdminNotaCreate() {
     c.name.toLowerCase().includes(searchCustomer.toLowerCase()) ||
     c.phone.includes(searchCustomer)
   );
+
+  const paymentMethods = [
+    { value: '', label: 'Selecionar...' },
+    { value: 'Dinheiro', label: 'Dinheiro' },
+    { value: 'PIX', label: 'PIX' },
+    { value: 'Cartão Crédito', label: 'Cartão Crédito' },
+    { value: 'Cartão Débito', label: 'Cartão Débito' },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -174,8 +196,8 @@ export default function AdminNotaCreate() {
                   <input type="text" value={note.customer_name} onChange={e => setNote({...note, customer_name: e.target.value})} className="input-field" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Telefone *</label>
-                  <input type="text" value={note.customer_phone} onChange={e => setNote({...note, customer_phone: e.target.value})} className="input-field" />
+                  <label className="block text-sm font-medium mb-1">Telefone (WhatsApp) *</label>
+                  <input type="text" value={note.customer_phone} onChange={e => setNote({...note, customer_phone: e.target.value})} className="input-field" placeholder="(00) 00000-0000" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Email</label>
@@ -201,7 +223,7 @@ export default function AdminNotaCreate() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-gray-800">Itens</h2>
                 <div className="flex gap-2">
-                  <button onClick={() => setShowProductModal(true)} className="btn-secondary text-sm flex items-center gap-1"><Plus className="w-4 h-4" /> Do Estoque</button>
+                  <button onClick={() => { setShowProductModal(true); setSearchProduct(''); }} className="btn-secondary text-sm flex items-center gap-1"><Plus className="w-4 h-4" /> Do Estoque</button>
                   <button onClick={addCustomItem} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm flex items-center gap-1"><Plus className="w-4 h-4" /> Item Manual</button>
                 </div>
               </div>
@@ -213,7 +235,7 @@ export default function AdminNotaCreate() {
                   {note.items.map((item, i) => (
                     <div key={item.id} className="bg-gray-50 rounded-lg p-4">
                       <div className="flex items-start gap-3">
-                        <span className="text-sm text-gray-500 w-6">{i + 1}.</span>
+                        <span className="text-sm text-gray-500 w-6 pt-1">{i + 1}.</span>
                         <div className="flex-1 grid grid-cols-5 gap-3">
                           <div className="col-span-2">
                             <label className="block text-xs text-gray-500 mb-1">Produto</label>
@@ -221,10 +243,14 @@ export default function AdminNotaCreate() {
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Qtd</label>
-                            <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} className="input-field text-sm" />
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => updateItem(item.id, 'quantity', Math.max(1, (item.quantity || 1) - 1))} className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold"><Minus className="w-3 h-3" /></button>
+                              <input type="number" min="1" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} className="input-field text-sm text-center w-14" />
+                              <button onClick={() => updateItem(item.id, 'quantity', (item.quantity || 1) + 1)} className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold"><Plus className="w-3 h-3" /></button>
+                            </div>
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 mb-1">Unidade</label>
+                            <label className="block text-xs text-gray-500 mb-1">Un</label>
                             <select value={item.unit} onChange={e => updateItem(item.id, 'unit', e.target.value)} className="input-field text-sm">
                               <option value="UND">UND</option>
                               <option value="SACO">SACO</option>
@@ -241,7 +267,7 @@ export default function AdminNotaCreate() {
                             <input type="number" step="0.01" value={item.price} onChange={e => updateItem(item.id, 'price', e.target.value)} className="input-field text-sm" />
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right pt-5">
                           <p className="font-bold text-primary-600">R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}</p>
                           <button onClick={() => removeItem(item.id)} className="text-red-500 hover:text-red-700 mt-1"><Trash2 className="w-4 h-4" /></button>
                         </div>
@@ -272,6 +298,18 @@ export default function AdminNotaCreate() {
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="font-medium">R$ {subtotal.toFixed(2).replace('.', ',')}</span>
                 </div>
+
+                {type === 'sale' && (
+                  <div className="border-t pt-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Forma de Pagamento</label>
+                    <select value={note.payment_method} onChange={e => setNote({...note, payment_method: e.target.value})} className="input-field text-sm">
+                      {paymentMethods.map(pm => (
+                        <option key={pm.value} value={pm.value}>{pm.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="border-t pt-3">
                   <label className="block text-xs text-gray-500 mb-1">Desconto</label>
                   <div className="flex gap-2">
@@ -302,29 +340,67 @@ export default function AdminNotaCreate() {
           </div>
         </div>
 
-        {/* Product Modal */}
+        {/* Product Search Modal */}
         {showProductModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
               <div className="p-6 border-b">
                 <h2 className="text-xl font-bold">Selecionar Produto do Estoque</h2>
-                <input type="text" placeholder="Buscar produto..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} className="input-field mt-3" />
+                <div className="relative mt-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input type="text" placeholder="Buscar produto..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} className="input-field pl-10" autoFocus />
+                </div>
               </div>
               <div className="overflow-y-auto flex-1 p-4">
                 <div className="space-y-2">
                   {filteredProducts.map(p => (
-                    <button key={p.id} onClick={() => addItem(p)} className="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 flex items-center justify-between">
+                    <button key={p.id} onClick={() => openQtySelector(p)} className="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 flex items-center justify-between">
                       <div>
                         <p className="font-medium">{p.name}</p>
-                        <p className="text-sm text-gray-500">{p.category} • Estoque: {p.stock}</p>
+                        <p className="text-sm text-gray-500">{p.category} • Estoque: {p.stock} {p.unit}</p>
                       </div>
                       <span className="font-bold text-primary-600">R$ {p.price.toFixed(2).replace('.', ',')}/{p.unit}</span>
                     </button>
                   ))}
                 </div>
+                {filteredProducts.length === 0 && <p className="text-center py-4 text-gray-500">Nenhum produto encontrado</p>}
               </div>
               <div className="p-4 border-t">
                 <button onClick={() => setShowProductModal(false)} className="w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Fechar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quantity Selector Modal */}
+        {showQtyModal && selectedProduct && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-xl font-bold mb-2">{selectedProduct.name}</h2>
+                <p className="text-sm text-gray-500 mb-6">{selectedProduct.category}</p>
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-gray-600 mb-2">Preço unitário</p>
+                  <p className="text-2xl font-bold text-primary-600">R$ {selectedProduct.price.toFixed(2).replace('.', ',')}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                  <div className="flex items-center justify-center gap-4">
+                    <button onClick={() => setSelectedQty(Math.max(1, selectedQty - 1))} className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><Minus className="w-5 h-5" /></button>
+                    <input type="number" min="1" value={selectedQty} onChange={e => setSelectedQty(Math.max(1, parseInt(e.target.value) || 1))} className="input-field text-center text-2xl font-bold w-24 h-12" />
+                    <button onClick={() => setSelectedQty(selectedQty + 1)} className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><Plus className="w-5 h-5" /></button>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-gray-600">Valor total:</span>
+                    <span className="text-2xl font-bold text-primary-600">R$ {(selectedProduct.price * selectedQty).toFixed(2).replace('.', ',')}</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => { setShowQtyModal(false); setShowProductModal(true); }} className="flex-1 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium">Voltar</button>
+                    <button onClick={confirmAddItem} className="flex-1 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 font-medium flex items-center justify-center gap-2"><Check className="w-5 h-5" /> Adicionar</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

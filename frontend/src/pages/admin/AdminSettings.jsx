@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, Store, Phone, MapPin, Clock, Mail, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Save, Store, Phone, MapPin, Clock, Mail, MessageCircle, FileText } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -34,6 +34,7 @@ export default function AdminSettings() {
     { key: 'store_name', label: 'Nome da Loja', icon: Store },
     { key: 'store_phone', label: 'Telefone', icon: Phone },
     { key: 'store_email', label: 'E-mail', icon: Mail },
+    { key: 'store_cnpj', label: 'CNPJ', icon: FileText },
     { key: 'store_address', label: 'Endereço', icon: MapPin },
     { key: 'store_hours', label: 'Horário de Funcionamento', icon: Clock },
     { key: 'whatsapp_number', label: 'WhatsApp (com código do país)', icon: MessageCircle },

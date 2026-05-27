@@ -431,6 +431,13 @@ app.post('/api/deliveries/:id/update-status', async (req, res) => {
   const customerName = delivery ? delivery.customer_name : `#${req.params.id}`;
   const actionLabel = { preparing: 'Preparando', ready: 'Pronto', out_for_delivery: 'Saiu para entrega', delivered: 'Entregue' };
   await insert('driver_activity_logs', { driver_id, action: `delivery.${status}`, description: `${actionLabel[status] || status} — ${customerName}`, details: JSON.stringify({ delivery_id: parseInt(req.params.id), status }), lat: lat || null, lng: lng || null });
+  // GPS ping no momento da mudança de status
+  if (lat && lng && status === 'out_for_delivery') {
+    try { const address = await reverseGeocode(lat, lng); await insert('driver_activity_logs', { driver_id, action: 'gps.out_for_delivery', description: `Saiu para entrega — ${customerName} em ${address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}`, lat, lng, address: address || '' }); } catch {}
+  }
+  if (lat && lng && status === 'delivered') {
+    try { const address = await reverseGeocode(lat, lng); await insert('driver_activity_logs', { driver_id, action: 'gps.delivered', description: `Entregue — ${customerName} em ${address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`}`, lat, lng, address: address || '' }); } catch {}
+  }
   res.json({ message: 'Status atualizado', status });
 });
 
@@ -524,10 +531,13 @@ app.get('/api/drivers/:id/activity-logs', async (req, res) => {
 });
 
 app.post('/api/drivers/:id/gps-pulse', async (req, res) => {
-  const { lat, lng, speed, movement } = req.body;
+  const { lat, lng, speed, movement, moved, was_moving } = req.body;
   const action = movement === 'driving' ? 'gps.driving' : 'gps.stopped';
   const address = await reverseGeocode(lat, lng);
-  const description = movement === 'driving' ? `Em movimento — ${address}` : `Parado — ${address}`;
+  const movimentoInfo = moved ? ' (moveu desde último ping)' : ' (mesma localização)';
+  const description = movement === 'driving'
+    ? `Em movimento — ${address}`
+    : `Parado — ${address}${movimentoInfo}`;
   const data = await insert('driver_activity_logs', { driver_id: req.params.id, action, description, lat, lng, address });
   await update('drivers', { current_lat: lat, current_lng: lng }, 'id', req.params.id);
   await insert('driver_locations', { driver_id: req.params.id, lat, lng, accuracy: 0, speed: speed || 0 });
@@ -812,14 +822,14 @@ app.get('/api/notes/:id', async (req, res) => {
 });
 
 app.post('/api/notes', async (req, res) => {
-  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations } = req.body;
+  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method } = req.body;
   const number = await generateNoteNumber(type);
-  const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: JSON.stringify(items), subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '' });
+  const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: JSON.stringify(items), subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
   res.status(201).json(data[0]);
 });
 
 app.put('/api/notes/:id', async (req, res) => {
-  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status'];
+  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method'];
   const updates = {};
   for (const f of fields) {
     if (req.body[f] !== undefined) updates[f] = req.body[f];
@@ -852,18 +862,29 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="${note.number}.pdf"`);
   doc.pipe(res);
 
-  doc.rect(0, 0, 595, 120).fill('#1e40af');
-  doc.fillColor('#ffffff').fontSize(24).font('Helvetica-Bold').text(settings.store_name || 'Guimaraes Materiais para Construcao', 40, 25);
-  doc.fontSize(10).font('Helvetica').text('Materiais para Construcao', 40, 55);
-  const typeLabel = note.type === 'quote' ? 'ORCAMENTO' : 'VENDA';
-  doc.rect(420, 25, 135, 30).fill('#f97316');
-  doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(typeLabel, 430, 33);
-  doc.fillColor('#ffffff').fontSize(10).font('Helvetica').text(`Nº ${note.number}`, 430, 55);
-  doc.text(`Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}`, 430, 70);
-  doc.fontSize(8).font('Helvetica').text(`Tel: ${settings.store_phone || ''} | Email: ${settings.store_email || ''}`, 40, 95);
-  doc.text(`CNPJ: ${settings.store_cnpj || ''} | ${settings.store_address || ''}`, 40, 108);
+  const storeName = settings.store_name || 'Guimaraes Materiais para Construcao';
+  const storeCnpj = settings.store_cnpj || '51.803.643/0001-04';
 
-  let y = 140;
+  doc.rect(0, 0, 595, 130).fill('#1e40af');
+
+  // Logo area (text-based)
+  doc.fillColor('#ffffff').fontSize(26).font('Helvetica-Bold').text(storeName, 40, 20);
+  doc.fontSize(10).font('Helvetica').text('Materiais para Construcao', 40, 52);
+  doc.fontSize(8).font('Helvetica').text(`CNPJ: ${storeCnpj}`, 40, 70);
+  doc.text(`Tel: ${settings.store_phone || ''} | Email: ${settings.store_email || ''}`, 40, 84);
+  if (settings.store_address) doc.text(settings.store_address, 40, 98);
+
+  // Type badge + number
+  const typeLabel = note.type === 'quote' ? 'ORCAMENTO' : 'VENDA';
+  doc.rect(400, 20, 155, 30).fill('#f97316');
+  doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(typeLabel, 410, 28);
+  doc.fillColor('#ffffff').fontSize(10).font('Helvetica').text(`Nº ${note.number}`, 410, 55);
+  doc.text(`Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}`, 410, 70);
+  if (note.type === 'sale' && note.payment_method) {
+    doc.text(`Pagamento: ${note.payment_method}`, 410, 85);
+  }
+
+  let y = 155;
   doc.fillColor('#1e40af').fontSize(12).font('Helvetica-Bold').text('DADOS DO CLIENTE', 40, y);
   y += 15;
   doc.fillColor('#333333').fontSize(9).font('Helvetica');
@@ -986,6 +1007,7 @@ app.get('/api/dashboard', async (req, res) => {
   const { data: billsData } = await supabase.from('bills').select('amount').eq('status', 'pending');
   const totalBillsAmount = billsData?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0;
   const { count: pendingDeliveries } = await supabase.from('deliveries').select('*', { count: 'exact', head: true }).in('status', ['preparing', 'ready', 'out_for_delivery']);
+  const { count: totalNotes } = await supabase.from('notes').select('*', { count: 'exact', head: true });
   const lowStock = await supabase.from('products').select('id, name, stock, min_stock').lte('stock', 'min_stock');
   const { data: monthlyOrders } = await supabase.from('orders').select('total, created_at').neq('status', 'cancelled').gte('created_at', new Date(Date.now() - 180 * 86400000).toISOString());
   const monthlyRev = {};
@@ -1001,7 +1023,7 @@ app.get('/api/dashboard', async (req, res) => {
   const categories = Object.entries(catCount).sort((a, b) => b[1] - a[1]).map(([category, count]) => ({ category, count }));
   const { count: unreadNotifications } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('read', 0);
 
-  res.json({ totalProducts, totalQuotes, pendingQuotes, totalOrders, totalRevenue, cashBalance, totalIncome, totalExpense, pendingBills, overdueBills, totalBillsAmount, pendingDeliveries, lowStock: lowStock.data || [], monthlyRevenue, topProducts: topProducts.data || [], categories, unreadNotifications });
+  res.json({ totalProducts, totalQuotes, pendingQuotes, totalOrders, totalRevenue, cashBalance, totalIncome, totalExpense, pendingBills, overdueBills, totalBillsAmount, pendingDeliveries, totalNotes, lowStock: lowStock.data || [], monthlyRevenue, topProducts: topProducts.data || [], categories, unreadNotifications });
 });
 
 // ==================== CHECK REMINDERS ====================

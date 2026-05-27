@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Package, FileText, ShoppingCart, Settings, BarChart3, LogOut, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Truck, Bell, DollarSign, Calendar, Users, Tag, Building2, UserCheck } from 'lucide-react';
+import { Package, FileText, ShoppingCart, Settings, BarChart3, LogOut, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, Truck, Bell, DollarSign, Calendar, Users, Tag, Building2, UserCheck, Receipt } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const API_URL = '/api';
@@ -56,6 +56,7 @@ export default function Admin() {
     { label: 'Saldo Caixa', value: `R$ ${stats.cashBalance.toFixed(2).replace('.', ',')}`, icon: DollarSign, color: stats.cashBalance >= 0 ? 'bg-green-600' : 'bg-red-600', link: '/admin/financeiro' },
     { label: 'Entregas Pendentes', value: stats.pendingDeliveries, icon: Truck, color: 'bg-indigo-500', link: '/admin/entregas' },
     { label: 'Contas a Pagar', value: stats.pendingBills, icon: Calendar, color: 'bg-orange-500', link: '/admin/contas' },
+    { label: 'Notas', value: stats.totalNotes, icon: Receipt, color: 'bg-amber-500', link: '/admin/notas' },
     { label: 'Clientes', value: '-', icon: Users, color: 'bg-teal-500', link: '/admin/clientes' },
   ];
 
@@ -120,6 +121,7 @@ export default function Admin() {
               { label: 'Motoristas', icon: UserCheck, link: '/admin/motoristas', color: 'text-violet-600' },
               { label: 'Clientes', icon: Users, link: '/admin/clientes', color: 'text-teal-600' },
               { label: 'Cupons', icon: Tag, link: '/admin/cupons', color: 'text-pink-600' },
+              { label: 'Notas', icon: Receipt, link: '/admin/notas', color: 'text-amber-600' },
               { label: 'Fornecedores', icon: Building2, link: '/admin/fornecedores', color: 'text-cyan-600' },
               { label: 'Config', icon: Settings, link: '/admin/configuracoes', color: 'text-gray-600' },
             ].map(item => (

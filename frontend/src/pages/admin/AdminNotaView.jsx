@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Printer, Edit2, Check, X, FileText, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Download, Printer, Edit2, Check, X, FileText, ShoppingCart, Share2 } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -37,7 +37,22 @@ export default function AdminNotaView() {
 
   const printPDF = () => {
     const printWindow = window.open(`${API_URL}/notes/${id}/pdf`, '_blank');
-    printWindow.onload = () => printWindow.print();
+    if (printWindow) printWindow.onload = () => printWindow.print();
+  };
+
+  const handleShare = async () => {
+    if (!note) return;
+    const pdfUrl = `${window.location.origin}${API_URL}/notes/${id}/pdf`;
+    const text = `Guimarães Materiais para Construção\nNota: ${note.number}\nCliente: ${note.customer_name}\nTotal: R$ ${note.total.toFixed(2).replace('.', ',')}\n\n${pdfUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Nota ${note.number}`, text, url: pdfUrl });
+        return;
+      } catch {}
+    }
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   if (loading || !note) return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Carregando...</div>;
@@ -50,6 +65,10 @@ export default function AdminNotaView() {
     draft: 'bg-gray-100 text-gray-800', sent: 'bg-blue-100 text-blue-800',
     approved: 'bg-green-100 text-green-800', completed: 'bg-purple-100 text-purple-800',
     cancelled: 'bg-red-100 text-red-800'
+  };
+
+  const paymentLabels = {
+    Dinheiro: 'Dinheiro', PIX: 'PIX', 'Cartão Crédito': 'Cartão Crédito', 'Cartão Débito': 'Cartão Débito'
   };
 
   const subtotal = note.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -68,6 +87,7 @@ export default function AdminNotaView() {
           </div>
           <div className="flex items-center gap-3">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[note.status]}`}>{statusLabels[note.status]}</span>
+            <button onClick={handleShare} className="py-2 px-4 border border-emerald-300 text-emerald-600 rounded-lg hover:bg-emerald-50 flex items-center gap-1"><Share2 className="w-4 h-4" /> Compartilhar</button>
             <button onClick={openPDF} className="btn-secondary flex items-center gap-1"><Download className="w-4 h-4" /> PDF</button>
             <button onClick={printPDF} className="py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1"><Printer className="w-4 h-4" /> Imprimir</button>
             <Link to={`/admin/notas/${id}/editar`} className="text-blue-600 hover:text-blue-800 p-2"><Edit2 className="w-5 h-5" /></Link>
@@ -84,6 +104,7 @@ export default function AdminNotaView() {
               <div>
                 <h1 className="text-2xl font-bold">{settings.store_name || 'Guimaraes Materiais para Construcao'}</h1>
                 <p className="text-blue-200 mt-1">Materiais para Construcao</p>
+                <p className="text-blue-200 text-sm mt-1">CNPJ: {settings.store_cnpj || '51.803.643/0001-04'}</p>
                 <div className="mt-4 text-sm text-blue-200 space-y-1">
                   <p>Tel: {settings.store_phone}</p>
                   <p>Email: {settings.store_email}</p>
@@ -96,6 +117,9 @@ export default function AdminNotaView() {
                 </div>
                 <p className="text-blue-200">Nº {note.number}</p>
                 <p className="text-blue-200">{new Date(note.created_at).toLocaleDateString('pt-BR')}</p>
+                {note.type === 'sale' && note.payment_method && (
+                  <p className="text-blue-200 text-sm mt-1">Pagamento: {note.payment_method}</p>
+                )}
               </div>
             </div>
           </div>
@@ -176,7 +200,7 @@ export default function AdminNotaView() {
 
           {/* Footer */}
           <div className="p-8 border-t text-center text-gray-500 text-xs">
-            <p>{settings.store_name} - Documento gerado eletronicamente</p>
+            <p>{settings.store_name} - CNPJ {settings.store_cnpj || '51.803.643/0001-04'} - Documento gerado eletronicamente</p>
           </div>
         </div>
 

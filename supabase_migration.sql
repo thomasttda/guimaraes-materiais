@@ -318,6 +318,7 @@ CREATE TABLE IF NOT EXISTS notes (
   discount_type TEXT DEFAULT 'fixed',
   total NUMERIC(10,2) NOT NULL,
   observations TEXT,
+  payment_method TEXT,
   status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'sent', 'approved', 'completed', 'cancelled')),
   pdf_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -391,7 +392,8 @@ INSERT INTO app_settings (key, value) VALUES
   ('store_address', 'Rua Exemplo, 123 - Centro'),
   ('store_hours', 'Seg-Sex: 7h-18h | Sáb: 7h-13h'),
   ('whatsapp_number', '5500000000000'),
-  ('store_email', 'contato@guimaraesmateriais.com.br')
+  ('store_email', 'contato@guimaraesmateriais.com.br'),
+  ('store_cnpj', '51.803.643/0001-04')
 ON CONFLICT (key) DO NOTHING;
 
 -- Fornecedores
