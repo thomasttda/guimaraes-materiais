@@ -4,6 +4,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const PDFDocument = require('pdfkit');
 const { supabase, queryAll, queryOne, insert, update, remove } = require('./supabase-db');
+const logoBase64 = require('./logo-b64');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -870,17 +871,8 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
   // Blue header background
   doc.rect(0, 0, 595, 120).fill('#1e40af');
 
-  // Try to load logo image from URL
-  let logoBuffer = null;
-  try {
-    const logoRes = await fetch('https://guimaraes-admin.vercel.app/logo.png', { signal: AbortSignal.timeout(3000) });
-    if (logoRes.ok) logoBuffer = Buffer.from(await logoRes.arrayBuffer());
-  } catch { /* logo not available, skip */ }
-
-  // Logo image on the right side of header
-  if (logoBuffer) {
-    doc.image(logoBuffer, 420, 10, { width: 140, height: 100 });
-  }
+  // Logo image (embedded base64)
+  doc.image(Buffer.from(logoBase64, 'base64'), 415, 10, { width: 145, height: 100 });
 
   // Store info on the left
   doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text(storeName, 40, 15);
