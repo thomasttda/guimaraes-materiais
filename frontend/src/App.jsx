@@ -26,6 +26,7 @@ import AdminNotaCreate from './pages/admin/AdminNotaCreate';
 import AdminNotaView from './pages/admin/AdminNotaView';
 import AdminMonitorMap from './pages/admin/AdminMonitorMap';
 import AdminLogsMotoristas from './pages/admin/AdminLogsMotoristas';
+import AdminVendedores from './pages/admin/AdminVendedores';
 import DriverLogin from './pages/DriverLogin';
 import DriverDashboard from './pages/DriverDashboard';
 import DriverDeliveryDetail from './pages/DriverDeliveryDetail';
@@ -66,6 +67,7 @@ function App() {
             <Route path="/admin/motoristas" element={<ProtectedRoute><AdminMotoristas /></ProtectedRoute>} />
             <Route path="/admin/monitor" element={<ProtectedRoute><AdminMonitorMap /></ProtectedRoute>} />
             <Route path="/admin/logs-motoristas" element={<ProtectedRoute><AdminLogsMotoristas /></ProtectedRoute>} />
+<Route path="/admin/vendedores" element={<ProtectedRoute><AdminVendedores /></ProtectedRoute>} />
             <Route path="/admin/notas" element={<ProtectedRoute><AdminNotas /></ProtectedRoute>} />
             <Route path="/admin/notas/nova" element={<ProtectedRoute><AdminNotaCreate /></ProtectedRoute>} />
             <Route path="/admin/notas/:id" element={<ProtectedRoute><AdminNotaView /></ProtectedRoute>} />

@@ -10,6 +10,7 @@ export default function AdminNotaCreate() {
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [settings, setSettings] = useState({});
+  const [sellers, setSellers] = useState([]);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showQtyModal, setShowQtyModal] = useState(false);
@@ -29,6 +30,7 @@ export default function AdminNotaCreate() {
     fetch(`${API_URL}/products`).then(res => res.json()).then(setProducts).catch(() => {});
     fetch(`${API_URL}/customers`).then(res => res.json()).then(setCustomers).catch(() => {});
     fetch(`${API_URL}/settings`).then(res => res.json()).then(setSettings).catch(() => {});
+    fetch(`${API_URL}/sellers`).then(res => res.json()).then(setSellers).catch(() => {});
   }, []);
 
   const openQtySelector = (product) => {
@@ -222,8 +224,11 @@ export default function AdminNotaCreate() {
                   <input type="text" value={note.customer_address} onChange={e => setNote({...note, customer_address: e.target.value})} className="input-field" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Atendente</label>
-                  <input type="text" value={note.attendant_name} onChange={e => setNote({...note, attendant_name: e.target.value})} className="input-field" placeholder={settings.store_name} />
+                  <label className="block text-sm font-medium mb-1">Vendedor</label>
+                  <select value={note.attendant_name} onChange={e => setNote({...note, attendant_name: e.target.value})} className="input-field">
+                    <option value="">Selecionar...</option>
+                    {sellers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </select>
                 </div>
               </div>
             </div>

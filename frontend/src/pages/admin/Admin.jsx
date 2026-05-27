@@ -58,6 +58,7 @@ export default function Admin() {
     { label: 'Contas a Pagar', value: stats.pendingBills, icon: Calendar, color: 'bg-orange-500', link: '/admin/contas' },
     { label: 'Notas', value: stats.totalNotes, icon: Receipt, color: 'bg-amber-500', link: '/admin/notas' },
     { label: 'Clientes', value: '-', icon: Users, color: 'bg-teal-500', link: '/admin/clientes' },
+    { label: 'Vendedores', value: '-', icon: UserCheck, color: 'bg-indigo-500', link: '/admin/vendedores' },
   ];
 
   return (
@@ -123,6 +124,7 @@ export default function Admin() {
               { label: 'Cupons', icon: Tag, link: '/admin/cupons', color: 'text-pink-600' },
               { label: 'Notas', icon: Receipt, link: '/admin/notas', color: 'text-amber-600' },
               { label: 'Fornecedores', icon: Building2, link: '/admin/fornecedores', color: 'text-cyan-600' },
+              { label: 'Vendedores', icon: UserCheck, link: '/admin/vendedores', color: 'text-indigo-600' },
               { label: 'Config', icon: Settings, link: '/admin/configuracoes', color: 'text-gray-600' },
             ].map(item => (
               <Link key={item.label} to={item.link} className="flex flex-col items-center gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">

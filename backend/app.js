@@ -795,6 +795,36 @@ app.delete('/api/suppliers/:id', async (req, res) => {
   res.json({ message: 'Fornecedor removido' });
 });
 
+// ==================== SELLERS ====================
+
+app.get('/api/sellers', async (req, res) => {
+  const data = await queryAll('sellers', { where: [{ field: 'active', value: 1 }], order: { field: 'name', ascending: true } });
+  res.json(data);
+});
+
+app.post('/api/sellers', async (req, res) => {
+  const { name, phone, email } = req.body;
+  if (!name) return res.status(400).json({ error: 'Nome é obrigatório' });
+  const data = await insert('sellers', { name, phone: phone || '', email: email || '' });
+  res.status(201).json(data[0]);
+});
+
+app.put('/api/sellers/:id', async (req, res) => {
+  const { name, phone, email } = req.body;
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (phone !== undefined) updates.phone = phone;
+  if (email !== undefined) updates.email = email;
+  const data = await update('sellers', updates, 'id', req.params.id);
+  if (!data.length) return res.status(404).json({ error: 'Vendedor não encontrado' });
+  res.json(data[0]);
+});
+
+app.delete('/api/sellers/:id', async (req, res) => {
+  await update('sellers', { active: 0 }, 'id', req.params.id);
+  res.json({ message: 'Vendedor removido' });
+});
+
 // ==================== NOTES ====================
 
 async function generateNoteNumber(type, customerName) {
