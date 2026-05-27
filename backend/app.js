@@ -924,41 +924,41 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
 <meta charset="UTF-8">
 <title>${note.number}</title>
 <style>
-  @page { size: A4; margin: 15mm; }
+  @page { size: A4; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; color: #333; font-size: 12px; line-height: 1.4; }
-  .header { background: #1e40af; color: #fff; padding: 25px 30px; display: flex; justify-content: space-between; align-items: flex-start; }
-  .header .left h1 { font-size: 20px; margin-bottom: 2px; }
-  .header .left .sub { font-size: 12px; color: #bfdbfe; }
-  .header .left .info { font-size: 10px; color: #bfdbfe; margin-top: 6px; line-height: 1.6; }
+  .header { background: #1e40af; color: #fff; padding: 20px 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .header .left h1 { font-size: 18px; margin-bottom: 2px; }
+  .header .left .sub { font-size: 11px; color: #bfdbfe; }
+  .header .left .info { font-size: 9px; color: #bfdbfe; margin-top: 4px; line-height: 1.5; }
   .header .right { text-align: right; }
-  .header .right .badge { background: #f97316; color: #fff; padding: 6px 18px; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 8px; }
-  .header .right .det { font-size: 11px; color: #bfdbfe; margin-top: 2px; }
-  .section { padding: 20px 30px; border-bottom: 1px solid #e5e7eb; }
-  .section h2 { color: #1e40af; font-size: 13px; font-weight: bold; margin-bottom: 12px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+  .header .right .badge { background: #f97316; color: #fff; padding: 4px 14px; font-weight: bold; font-size: 13px; display: inline-block; margin-bottom: 6px; }
+  .header .right .det { font-size: 10px; color: #bfdbfe; margin-top: 2px; }
+  .section { padding: 14px 20px; border-bottom: 1px solid #e5e7eb; }
+  .section h2 { color: #1e40af; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; }
   .grid2 .label { color: #6b7280; }
   .grid2 .value { font-weight: 500; }
   .grid2 .full { grid-column: span 2; }
-  table.items { width: 100%; border-collapse: collapse; font-size: 11px; }
-  table.items th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-weight: 600; color: #333; }
+  table.items { width: 100%; border-collapse: collapse; font-size: 10px; }
+  table.items th { background: #f3f4f6; text-align: left; padding: 6px 8px; font-weight: 600; color: #333; }
   table.items th.right { text-align: right; }
   table.items th.center { text-align: center; }
-  table.items td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; }
+  table.items td { padding: 5px 8px; border-bottom: 1px solid #f3f4f6; }
   table.items .even { background: #f9fafb; }
   table.items .prod { max-width: 280px; }
   table.items .qtd, table.items .un { text-align: center; }
   table.items .preco, table.items .total { text-align: right; }
-  .totals { margin-top: 15px; display: flex; justify-content: flex-end; }
-  .totals table { width: 220px; font-size: 12px; }
-  .totals td { padding: 4px 0; }
+  .totals { margin-top: 12px; display: flex; justify-content: flex-end; }
+  .totals table { width: 200px; font-size: 11px; }
+  .totals td { padding: 3px 0; }
   .totals .label { color: #6b7280; }
   .totals .val { text-align: right; }
   .totals .line { border-top: 2px solid #1e40af; }
-  .totals .big { font-size: 15px; font-weight: bold; color: #1e40af; }
-  .obs { padding: 20px 30px; background: #f9fafb; font-size: 11px; color: #6b7280; }
-  .obs h2 { color: #1e40af; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
-  .footer { text-align: center; padding: 15px 30px; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
+  .totals .big { font-size: 14px; font-weight: bold; color: #1e40af; }
+  .obs { padding: 14px 20px; background: #f9fafb; font-size: 10px; color: #6b7280; }
+  .obs h2 { color: #1e40af; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+  .footer { text-align: center; padding: 10px 20px; font-size: 8px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style>
 </head>
