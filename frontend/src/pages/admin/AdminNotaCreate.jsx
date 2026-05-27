@@ -122,6 +122,16 @@ export default function AdminNotaCreate() {
       });
       const data = await res.json();
       navigate(`/admin/notas/${data.id}`);
+
+      // Auto-enviar WhatsApp se status for 'sent'
+      if (status === 'sent' && note.customer_phone) {
+        const cleanPhone = note.customer_phone.replace(/\D/g, '');
+        const phone = cleanPhone.length <= 11 ? '55' + cleanPhone : cleanPhone;
+        const pdfUrl = `${window.location.origin}${API_URL}/notes/${data.id}/pdf`;
+        const typeLabel = type === 'quote' ? 'Orçamento' : 'Nota de Venda';
+        const msg = `Olá querido cliente GUIMARÃES. Segue aqui o seu ${typeLabel} como solicitado! ${pdfUrl}`;
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      }
     } catch (err) {
       alert('Erro ao salvar nota');
     }

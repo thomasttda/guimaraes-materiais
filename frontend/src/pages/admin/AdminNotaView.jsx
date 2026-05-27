@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Printer, Edit2, Check, X, FileText, ShoppingCart, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Printer, Edit2, Check, X, FileText, ShoppingCart, Share2, MessageCircle } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -61,6 +61,16 @@ export default function AdminNotaView() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  const sendWhatsApp = () => {
+    if (!note) return;
+    const cleanPhone = note.customer_phone.replace(/\D/g, '');
+    const phone = cleanPhone.length <= 11 ? '55' + cleanPhone : cleanPhone;
+    const pdfUrl = `${window.location.origin}${API_URL}/notes/${id}/pdf`;
+    const typeLabel = note.type === 'quote' ? 'Orçamento' : 'Nota de Venda';
+    const msg = `Olá querido cliente GUIMARÃES. Segue aqui o seu ${typeLabel} como solicitado! ${pdfUrl}`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   if (error) return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-4">
       <p className="text-gray-600 text-lg">Nota não encontrada</p>
@@ -99,6 +109,9 @@ export default function AdminNotaView() {
           </div>
           <div className="flex items-center gap-3">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[note.status]}`}>{statusLabels[note.status]}</span>
+            {note.customer_phone && (
+              <button onClick={sendWhatsApp} className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1"><MessageCircle className="w-4 h-4" /> Enviar WhatsApp</button>
+            )}
             <button onClick={handleShare} className="py-2 px-4 border border-emerald-300 text-emerald-600 rounded-lg hover:bg-emerald-50 flex items-center gap-1"><Share2 className="w-4 h-4" /> Compartilhar</button>
             <button onClick={openPDF} className="btn-secondary flex items-center gap-1"><Download className="w-4 h-4" /> PDF</button>
             <button onClick={printPDF} className="py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1"><Printer className="w-4 h-4" /> Imprimir</button>
