@@ -3,7 +3,7 @@ require('express-async-errors');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const { queryAll, queryOne, insert, update, remove } = require('./supabase-db');
+const { supabase, queryAll, queryOne, insert, update, remove } = require('./supabase-db');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
