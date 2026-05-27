@@ -871,21 +871,21 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
   // Blue header background
   doc.rect(0, 0, 595, 120).fill('#1e40af');
 
-  // Logo image (embedded base64)
-  doc.image(Buffer.from(logoBase64, 'base64'), 415, 10, { width: 145, height: 100 });
-
   // Store info on the left
   doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text(storeName, 40, 15);
   doc.fontSize(9).font('Helvetica').text('Materiais para Construcao', 40, 40);
   doc.fontSize(7).font('Helvetica').text(`CNPJ: ${storeCnpj}`, 40, 58);
   doc.text(`Tel: ${storePhone}`, 40, 70);
-  doc.text(storeAddress, 40, 82, { width: 340 });
+  doc.text(storeAddress, 40, 82, { width: 320 });
 
-  // Type label (no orange bar, just text)
-  const typeLabel = note.type === 'quote' ? 'ORCAMENTO' : 'VENDA';
-  doc.fillColor('#f97316').fontSize(13).font('Helvetica-Bold').text(typeLabel, 40, 104);
+  // Logo image (embedded base64, reduced 50%)
+  doc.image(Buffer.from(logoBase64, 'base64'), 420, 8, { width: 100, height: 70 });
+
+  // Type label on the right, below the logo
+  const typeLabel = note.type === 'quote' ? 'ORÇAMENTO' : 'VENDA';
+  doc.fillColor('#f97316').fontSize(12).font('Helvetica-Bold').text(typeLabel, 410, 83);
   doc.fillColor('#ffffff').fontSize(8).font('Helvetica');
-  doc.text(`${note.number}`, 100, 105.5);
+  doc.text(`${note.number}`, 410, 100);
 
   let y = 145;
   doc.fillColor('#1e40af').fontSize(11).font('Helvetica-Bold').text('DADOS DO CLIENTE', 40, y);
