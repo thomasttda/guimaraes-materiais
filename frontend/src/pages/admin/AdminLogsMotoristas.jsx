@@ -205,7 +205,7 @@ export default function AdminLogsMotoristas() {
                 ))}
               </select>
             </div>
-            <div className="flex gap-1 overflow-x-auto">
+            <div className="flex gap-1 flex-wrap">
               {actionFilterOptions.map(f => (
                 <button
                   key={f.key}

@@ -78,7 +78,7 @@ export default function AdminEntregas() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Filters */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 flex-wrap mb-6">
           {[['all', 'Todas'], ['preparing', 'Preparando'], ['ready', 'Pronto'], ['out_for_delivery', 'Em Entrega'], ['delivered', 'Entregues']].map(([val, label]) => (
             <button key={val} onClick={() => setFilter(val)} className={`px-4 py-2 rounded-full text-sm font-medium ${filter === val ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 border'}`}>{label}</button>
           ))}

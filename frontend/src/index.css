@@ -28,6 +28,19 @@
   }
 }
 
+@layer utilities {
+  .flex-wrap-mobile { @apply flex-wrap; }
+  .gap-sm-mobile { @apply gap-2; }
+}
+
+@media (max-width: 640px) {
+  .flex-wrap-mobile { flex-wrap: wrap !important; }
+  .gap-sm-mobile { gap: 0.5rem !important; }
+  header .max-w-7xl { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+  .input-field { font-size: 16px !important; }
+  .btn-primary, .btn-secondary { padding: 0.5rem 0.75rem !important; font-size: 0.875rem !important; }
+}
+
 @keyframes slide-up {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }

@@ -83,7 +83,7 @@ export default function AdminFinanceiro() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <div className="card p-6 border-l-4 border-green-500">
             <div className="flex items-center gap-3">
               <TrendingUp className="w-8 h-8 text-green-500" />

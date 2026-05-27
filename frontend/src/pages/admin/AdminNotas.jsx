@@ -81,7 +81,7 @@ export default function AdminNotas() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-primary-600">{notes.length}</p>
             <p className="text-sm text-gray-500">Total de Notas</p>

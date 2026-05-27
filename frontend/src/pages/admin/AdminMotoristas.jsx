@@ -91,7 +91,7 @@ export default function AdminMotoristas() {
             <Link to="/admin" className="text-gray-600 hover:text-primary-600"><ArrowLeft className="w-5 h-5" /></Link>
             <h1 className="font-bold text-gray-800">Motoristas / Entregadores</h1>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 flex-wrap">
             <Link to="/admin/monitor" className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
               <Map className="w-4 h-4" /> Monitorar
             </Link>
@@ -110,7 +110,7 @@ export default function AdminMotoristas() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="card p-4 text-center">
             <p className="text-2xl font-bold text-blue-600">{drivers.length}</p>
             <p className="text-sm text-gray-500">Motoristas</p>

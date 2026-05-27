@@ -76,7 +76,7 @@ export default function AdminContas() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Summary */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
           <div className="card p-6 border-l-4 border-yellow-500">
             <p className="text-sm text-gray-500">Total Pendente</p>
             <p className="text-2xl font-bold text-yellow-600">R$ {totalPending.toFixed(2).replace('.', ',')}</p>
@@ -92,7 +92,7 @@ export default function AdminContas() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 flex-wrap mb-6">
           {[['all', 'Todas'], ['pending', 'Pendentes'], ['paid', 'Pagas'], ['overdue', 'Vencidas']].map(([val, label]) => (
             <button key={val} onClick={() => setFilter(val)} className={`px-4 py-2 rounded-full text-sm font-medium ${filter === val ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 border'}`}>{label}</button>
           ))}

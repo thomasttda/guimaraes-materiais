@@ -107,14 +107,14 @@ export default function AdminNotaView() {
               <p className="text-sm text-gray-500">{note.type === 'quote' ? 'Orçamento' : 'Venda'} • {new Date(note.created_at).toLocaleDateString('pt-BR')}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[note.status]}`}>{statusLabels[note.status]}</span>
             {note.customer_phone && (
-              <button onClick={sendWhatsApp} className="py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1"><MessageCircle className="w-4 h-4" /> Enviar WhatsApp</button>
+              <button onClick={sendWhatsApp} className="py-2 px-3 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1 text-sm"><MessageCircle className="w-4 h-4" /> WhatsApp</button>
             )}
-            <button onClick={handleShare} className="py-2 px-4 border border-emerald-300 text-emerald-600 rounded-lg hover:bg-emerald-50 flex items-center gap-1"><Share2 className="w-4 h-4" /> Compartilhar</button>
-            <button onClick={openPDF} className="btn-secondary flex items-center gap-1"><Download className="w-4 h-4" /> PDF</button>
-            <button onClick={printPDF} className="py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1"><Printer className="w-4 h-4" /> Imprimir</button>
+            <button onClick={handleShare} className="py-2 px-3 border border-emerald-300 text-emerald-600 rounded-lg hover:bg-emerald-50 flex items-center gap-1 text-sm"><Share2 className="w-4 h-4" /> Compartilhar</button>
+            <button onClick={openPDF} className="btn-secondary flex items-center gap-1 text-sm px-3 py-2"><Download className="w-4 h-4" /> PDF</button>
+            <button onClick={printPDF} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm"><Printer className="w-4 h-4" /> Imprimir</button>
             <Link to={`/admin/notas/${id}/editar`} className="text-blue-600 hover:text-blue-800 p-2"><Edit2 className="w-5 h-5" /></Link>
           </div>
         </div>
