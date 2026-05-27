@@ -388,10 +388,10 @@ $$;
 -- Configurações da Loja
 INSERT INTO app_settings (key, value) VALUES
   ('store_name', 'Guimarães Materiais para Construção'),
-  ('store_phone', '(00) 0000-0000'),
-  ('store_address', 'Rua Exemplo, 123 - Centro'),
+  ('store_phone', '(73) 99154-6335'),
+  ('store_address', 'Av. Beira Rio, Iguape, Ilhéus - BA (Frente a Igreja Católica) CEP - 45658-446'),
   ('store_hours', 'Seg-Sex: 7h-18h | Sáb: 7h-13h'),
-  ('whatsapp_number', '5500000000000'),
+  ('whatsapp_number', '5573991546335'),
   ('store_email', 'contato@guimaraesmateriais.com.br'),
   ('store_cnpj', '51.803.643/0001-04')
 ON CONFLICT (key) DO NOTHING;

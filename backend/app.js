@@ -824,7 +824,7 @@ app.get('/api/notes/:id', async (req, res) => {
 app.post('/api/notes', async (req, res) => {
   const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method } = req.body;
   const number = await generateNoteNumber(type);
-  const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: JSON.stringify(items), subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
+  const data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
   res.status(201).json(data[0]);
 });
 
@@ -834,7 +834,7 @@ app.put('/api/notes/:id', async (req, res) => {
   for (const f of fields) {
     if (req.body[f] !== undefined) updates[f] = req.body[f];
   }
-  if (req.body.items) updates.items = JSON.stringify(req.body.items);
+  if (req.body.items) updates.items = req.body.items;
   const data = await update('notes', updates, 'id', req.params.id);
   if (!data.length) return res.status(404).json({ error: 'Nota não encontrada' });
   res.json(data[0]);
@@ -856,7 +856,7 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
   settingsArr.forEach(s => { settings[s.key] = s.value; });
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 });
-  const items = typeof note.items === 'string' ? JSON.parse(note.items) : note.items;
+  const items = typeof note.items === 'string' ? JSON.parse(note.items) : (note.items || []);
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${note.number}.pdf"`);
@@ -864,28 +864,39 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
 
   const storeName = settings.store_name || 'Guimaraes Materiais para Construcao';
   const storeCnpj = settings.store_cnpj || '51.803.643/0001-04';
+  const storePhone = settings.store_phone || '(73) 99154-6335';
+  const storeAddress = settings.store_address || 'Av. Beira Rio, Iguape, Ilhéus - BA (Frente a Igreja Católica) CEP - 45658-446';
 
-  doc.rect(0, 0, 595, 130).fill('#1e40af');
+  // Blue header background
+  doc.rect(0, 0, 595, 120).fill('#1e40af');
 
-  // Logo area (text-based)
-  doc.fillColor('#ffffff').fontSize(26).font('Helvetica-Bold').text(storeName, 40, 20);
-  doc.fontSize(10).font('Helvetica').text('Materiais para Construcao', 40, 52);
-  doc.fontSize(8).font('Helvetica').text(`CNPJ: ${storeCnpj}`, 40, 70);
-  doc.text(`Tel: ${settings.store_phone || ''} | Email: ${settings.store_email || ''}`, 40, 84);
-  if (settings.store_address) doc.text(settings.store_address, 40, 98);
+  // Try to load logo image from URL
+  let logoBuffer = null;
+  try {
+    const logoRes = await fetch('https://guimaraes-admin.vercel.app/logo.png', { signal: AbortSignal.timeout(3000) });
+    if (logoRes.ok) logoBuffer = Buffer.from(await logoRes.arrayBuffer());
+  } catch { /* logo not available, skip */ }
 
-  // Type badge + number
-  const typeLabel = note.type === 'quote' ? 'ORCAMENTO' : 'VENDA';
-  doc.rect(400, 20, 155, 30).fill('#f97316');
-  doc.fillColor('#ffffff').fontSize(14).font('Helvetica-Bold').text(typeLabel, 410, 28);
-  doc.fillColor('#ffffff').fontSize(10).font('Helvetica').text(`Nº ${note.number}`, 410, 55);
-  doc.text(`Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}`, 410, 70);
-  if (note.type === 'sale' && note.payment_method) {
-    doc.text(`Pagamento: ${note.payment_method}`, 410, 85);
+  // Logo image on the right side of header
+  if (logoBuffer) {
+    doc.image(logoBuffer, 420, 10, { width: 140, height: 100 });
   }
 
-  let y = 155;
-  doc.fillColor('#1e40af').fontSize(12).font('Helvetica-Bold').text('DADOS DO CLIENTE', 40, y);
+  // Store info on the left
+  doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text(storeName, 40, 15);
+  doc.fontSize(9).font('Helvetica').text('Materiais para Construcao', 40, 40);
+  doc.fontSize(7).font('Helvetica').text(`CNPJ: ${storeCnpj}`, 40, 58);
+  doc.text(`Tel: ${storePhone}`, 40, 70);
+  doc.text(storeAddress, 40, 82, { width: 340 });
+
+  // Type label (no orange bar, just text)
+  const typeLabel = note.type === 'quote' ? 'ORCAMENTO' : 'VENDA';
+  doc.fillColor('#f97316').fontSize(13).font('Helvetica-Bold').text(typeLabel, 40, 104);
+  doc.fillColor('#ffffff').fontSize(8).font('Helvetica');
+  doc.text(`${note.number}`, 100, 105.5);
+
+  let y = 145;
+  doc.fillColor('#1e40af').fontSize(11).font('Helvetica-Bold').text('DADOS DO CLIENTE', 40, y);
   y += 15;
   doc.fillColor('#333333').fontSize(9).font('Helvetica');
   doc.text(`Nome: ${note.customer_name}`, 40, y); y += 14;
@@ -895,51 +906,68 @@ app.get('/api/notes/:id/pdf', async (req, res) => {
   if (note.customer_address) { doc.text(`Endereco: ${note.customer_address}`, 40, y); y += 14; }
   if (note.attendant_name) { doc.text(`Atendente: ${note.attendant_name}`, 40, y); y += 14; }
 
-  y += 10;
-  doc.rect(40, y, 515, 25).fill('#f3f4f6');
-  doc.fillColor('#333333').fontSize(9).font('Helvetica-Bold');
-  doc.text('PRODUTO', 50, y + 7);
-  doc.text('QTD', 280, y + 7);
-  doc.text('UN', 320, y + 7);
-  doc.text('PRECO UNIT.', 360, y + 7);
-  doc.text('TOTAL', 470, y + 7);
+  // Right side info: date, payment
+  const infoX = 400;
+  let infoY = 145;
+  doc.fillColor('#1e40af').fontSize(9).font('Helvetica-Bold');
+  doc.text(`Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}`, infoX, infoY); infoY += 14;
+  if (note.type === 'sale' && note.payment_method) {
+    doc.text(`Pagamento: ${note.payment_method}`, infoX, infoY); infoY += 14;
+  }
 
-  y += 30;
+  y = Math.max(y, infoY) + 10;
+
+  // Items table header
+  doc.rect(40, y, 515, 22).fill('#f3f4f6');
+  doc.fillColor('#333333').fontSize(8).font('Helvetica-Bold');
+  doc.text('PRODUTO', 50, y + 6);
+  doc.text('QTD', 280, y + 6, { width: 30, align: 'center' });
+  doc.text('UN', 320, y + 6, { width: 30, align: 'center' });
+  doc.text('PRECO UNIT.', 360, y + 6, { width: 60, align: 'right' });
+  doc.text('TOTAL', 470, y + 6, { width: 60, align: 'right' });
+
+  y += 28;
   doc.font('Helvetica').fontSize(8).fillColor('#333333');
-  items.forEach((item, i) => {
-    if (y > 700) { doc.addPage(); y = 40; }
-    if (i % 2 === 0) { doc.rect(40, y - 5, 515, 20).fill('#f9fafb'); }
-    doc.text(item.name.substring(0, 40), 50, y);
-    doc.text(String(item.quantity || 1), 280, y);
-    doc.text(item.unit || 'UND', 320, y);
-    doc.text(`R$ ${(item.price || 0).toFixed(2).replace('.', ',')}`, 360, y);
-    doc.text(`R$ ${((item.price || 0) * (item.quantity || 1)).toFixed(2).replace('.', ',')}`, 470, y);
-    y += 20;
+  (items || []).forEach((item, i) => {
+    if (y > 740) { doc.addPage(); y = 40; }
+    if (i % 2 === 0) { doc.rect(40, y - 4, 515, 18).fill('#f9fafb'); }
+    const name = (item.name || 'Item').substring(0, 45);
+    const qty = item.quantity || 1;
+    const unit = item.unit || 'UND';
+    const price = item.price || 0;
+    const total = price * qty;
+    doc.text(name, 50, y);
+    doc.text(String(qty), 280, y, { width: 30, align: 'center' });
+    doc.text(unit, 320, y, { width: 30, align: 'center' });
+    doc.text(`R$ ${price.toFixed(2).replace('.', ',')}`, 360, y, { width: 60, align: 'right' });
+    doc.text(`R$ ${total.toFixed(2).replace('.', ',')}`, 470, y, { width: 60, align: 'right' });
+    y += 18;
   });
 
   y += 10;
-  doc.rect(350, y, 205, 80).fill('#f3f4f6');
-  y += 10;
-  doc.fontSize(9).font('Helvetica').fillColor('#666666');
-  doc.text('Subtotal:', 360, y);
-  doc.text(`R$ ${note.subtotal.toFixed(2).replace('.', ',')}`, 480, y, { align: 'right' });
-  y += 18;
-  if (note.discount > 0) {
-    doc.text(`Desconto (${note.discount_type === 'percentage' ? note.discount + '%' : 'R$'}):`, 360, y);
-    const discountAmount = note.discount_type === 'percentage' ? note.subtotal * (note.discount / 100) : note.discount;
-    doc.text(`- R$ ${discountAmount.toFixed(2).replace('.', ',')}`, 480, y, { align: 'right' });
-    y += 18;
-  }
-  doc.rect(350, y, 205, 1).fill('#333333');
+  const totBoxY = y;
+  doc.rect(370, totBoxY, 185, 5).fill('#f3f4f6');
   y += 5;
-  doc.fontSize(12).font('Helvetica-Bold').fillColor('#1e40af');
-  doc.text('TOTAL:', 360, y);
-  doc.text(`R$ ${note.total.toFixed(2).replace('.', ',')}`, 480, y, { align: 'right' });
+  doc.fontSize(8).font('Helvetica').fillColor('#666666');
+  doc.text('Subtotal:', 380, y);
+  doc.text(`R$ ${(note.subtotal || 0).toFixed(2).replace('.', ',')}`, 470, y, { width: 75, align: 'right' });
+  y += 15;
+  if ((note.discount || 0) > 0) {
+    doc.text(`Desconto (${note.discount_type === 'percentage' ? note.discount + '%' : 'R$'}):`, 380, y);
+    const discountAmount = note.discount_type === 'percentage' ? (note.subtotal || 0) * (note.discount / 100) : (note.discount || 0);
+    doc.text(`- R$ ${discountAmount.toFixed(2).replace('.', ',')}`, 470, y, { width: 75, align: 'right' });
+    y += 15;
+  }
+  doc.rect(370, y, 185, 1).fill('#333333');
+  y += 6;
+  doc.fontSize(11).font('Helvetica-Bold').fillColor('#1e40af');
+  doc.text('TOTAL:', 380, y);
+  doc.text(`R$ ${(note.total || 0).toFixed(2).replace('.', ',')}`, 470, y, { width: 75, align: 'right' });
 
   if (note.observations) {
-    y += 30;
+    y += 25;
     doc.fillColor('#1e40af').fontSize(10).font('Helvetica-Bold').text('OBSERVACOES', 40, y);
-    y += 15;
+    y += 14;
     doc.fillColor('#666666').fontSize(8).font('Helvetica').text(note.observations, 40, y, { width: 515 });
   }
 

@@ -10,6 +10,7 @@ export default function AdminNotaView() {
   const [note, setNote] = useState(null);
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetchNote();
@@ -17,8 +18,13 @@ export default function AdminNotaView() {
   }, [id]);
 
   const fetchNote = async () => {
-    const data = await fetch(`${API_URL}/notes/${id}`).then(res => res.json());
-    setNote(data);
+    try {
+      const res = await fetch(`${API_URL}/notes/${id}`);
+      if (!res.ok) { setError(true); setLoading(false); return; }
+      const data = await res.json();
+      if (!data || !data.items) { setError(true); setLoading(false); return; }
+      setNote(data);
+    } catch { setError(true); }
     setLoading(false);
   };
 
@@ -55,6 +61,12 @@ export default function AdminNotaView() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  if (error) return (
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center gap-4">
+      <p className="text-gray-600 text-lg">Nota não encontrada</p>
+      <button onClick={() => navigate('/admin/notas')} className="btn-primary px-6 py-2 rounded-lg">Voltar para Notas</button>
+    </div>
+  );
   if (loading || !note) return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Carregando...</div>;
 
   const statusLabels = {
