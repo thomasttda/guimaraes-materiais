@@ -2,9 +2,8 @@ const express = require('express');
 require('express-async-errors');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const PDFDocument = require('pdfkit');
-const { supabase, queryAll, queryOne, insert, update, remove } = require('./supabase-db');
-const logoBase64 = require('./logo-b64');
+const path = require('path');
+const { queryAll, queryOne, insert, update, remove } = require('./supabase-db');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -824,12 +823,27 @@ app.get('/api/notes', async (req, res) => {
   if (status) where.push({ field: 'status', value: status });
   if (customer_phone) where.push({ field: 'customer_phone', value: customer_phone });
   const data = await queryAll('notes', { where, order: { field: 'created_at', ascending: false } });
+  data.forEach(n => { n.items = parseItems(n.items); });
   res.json(data);
 });
+
+function parseItems(items) {
+  if (Array.isArray(items)) return items;
+  if (typeof items === 'string') {
+    try { const p = JSON.parse(items); return Array.isArray(p) ? p : []; } catch { return []; }
+  }
+  if (items && typeof items === 'object') {
+    // handle case where items is an object with numeric keys instead of array
+    const vals = Object.values(items);
+    if (vals.length && typeof vals[0] === 'object') return vals;
+  }
+  return [];
+}
 
 app.get('/api/notes/:id', async (req, res) => {
   const note = await queryOne('notes', { where: [{ field: 'id', value: req.params.id }] });
   if (!note) return res.status(404).json({ error: 'Nota não encontrada' });
+  note.items = parseItems(note.items);
   res.json(note);
 });
 
@@ -857,125 +871,149 @@ app.delete('/api/notes/:id', async (req, res) => {
   res.json({ message: 'Nota removida' });
 });
 
-// ==================== PDF ====================
+// ==================== PDF / PRINT ====================
+
+function escapeHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtMoney(val) {
+  return 'R$ ' + (parseFloat(val) || 0).toFixed(2).replace('.', ',');
+}
 
 app.get('/api/notes/:id/pdf', async (req, res) => {
   const note = await queryOne('notes', { where: [{ field: 'id', value: req.params.id }] });
   if (!note) return res.status(404).json({ error: 'Nota não encontrada' });
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
   const settingsArr = await queryAll('app_settings');
   const settings = {};
   settingsArr.forEach(s => { settings[s.key] = s.value; });
 
-  const doc = new PDFDocument({ size: 'A4', margin: 40 });
-  const items = typeof note.items === 'string' ? JSON.parse(note.items) : (note.items || []);
-
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${note.number}.pdf"`);
-  doc.pipe(res);
-
-  const storeName = settings.store_name || 'Guimaraes Materiais para Construcao';
-  const storeCnpj = settings.store_cnpj || '51.803.643/0001-04';
-  const storePhone = settings.store_phone || '(73) 99154-6335';
-  const storeAddress = settings.store_address || 'Av. Beira Rio, Iguape, Ilhéus - BA (Frente a Igreja Católica) CEP - 45658-446';
-
-  // Blue header background
-  doc.rect(0, 0, 595, 120).fill('#1e40af');
-
-  // Store info on the left
-  doc.fillColor('#ffffff').fontSize(20).font('Helvetica-Bold').text(storeName, 40, 15);
-  doc.fontSize(9).font('Helvetica').text('Materiais para Construcao', 40, 40);
-  doc.fontSize(7).font('Helvetica').text(`CNPJ: ${storeCnpj}`, 40, 58);
-  doc.text(`Tel: ${storePhone}`, 40, 70);
-  doc.text(storeAddress, 40, 82, { width: 320 });
-
-  // Logo on the right (with error protection)
-  try { doc.image(Buffer.from(logoBase64, 'base64'), 420, 8, { width: 100, height: 70 }); } catch {}
-
-  // Type label on the right, below the logo
+  const items = parseItems(note.items);
+  const storeName = escapeHtml(settings.store_name || 'Guimarães Materiais para Construção');
+  const storeCnpj = escapeHtml(settings.store_cnpj || '51.803.643/0001-04');
+  const storePhone = escapeHtml(settings.store_phone || '(73) 99154-6335');
+  const storeAddress = escapeHtml(settings.store_address || 'Av. Beira Rio, Iguape, Ilhéus - BA');
+  const customerName = escapeHtml(note.customer_name);
+  const customerPhone = escapeHtml(note.customer_phone);
+  const customerEmail = escapeHtml(note.customer_email || '');
+  const customerCpf = escapeHtml(note.customer_cpf || '');
+  const customerAddress = escapeHtml(note.customer_address || '');
+  const attendant = escapeHtml(note.attendant_name || '');
   const typeLabel = note.type === 'quote' ? 'ORÇAMENTO' : 'VENDA';
-  doc.fillColor('#f97316').fontSize(12).font('Helvetica-Bold').text(typeLabel, 410, 83);
-  doc.fillColor('#ffffff').fontSize(8).font('Helvetica');
-  doc.text(`${note.number}`, 410, 100);
+  const createdAt = new Date(note.created_at).toLocaleDateString('pt-BR');
+  const obs = escapeHtml(note.observations || '');
 
-  let y = 145;
-  doc.fillColor('#1e40af').fontSize(11).font('Helvetica-Bold').text('DADOS DO CLIENTE', 40, y);
-  y += 15;
-  doc.fillColor('#333333').fontSize(9).font('Helvetica');
-  doc.text(`Nome: ${note.customer_name}`, 40, y); y += 14;
-  doc.text(`Telefone: ${note.customer_phone}`, 40, y); y += 14;
-  if (note.customer_email) { doc.text(`Email: ${note.customer_email}`, 40, y); y += 14; }
-  if (note.customer_cpf) { doc.text(`CPF: ${note.customer_cpf}`, 40, y); y += 14; }
-  if (note.customer_address) { doc.text(`Endereco: ${note.customer_address}`, 40, y); y += 14; }
-  if (note.attendant_name) { doc.text(`Atendente: ${note.attendant_name}`, 40, y); y += 14; }
+  const subtotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0) * (parseInt(i.quantity) || 1), 0);
+  const discountAmount = note.discount_type === 'percentage' ? subtotal * (parseFloat(note.discount) || 0) / 100 : (parseFloat(note.discount) || 0);
 
-  // Right side info: date, payment
-  const infoX = 400;
-  let infoY = 145;
-  doc.fillColor('#1e40af').fontSize(9).font('Helvetica-Bold');
-  doc.text(`Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}`, infoX, infoY); infoY += 14;
-  if (note.type === 'sale' && note.payment_method) {
-    doc.text(`Pagamento: ${note.payment_method}`, infoX, infoY); infoY += 14;
-  }
-
-  y = Math.max(y, infoY) + 10;
-
-  // Items table header
-  doc.rect(40, y, 515, 22).fill('#f3f4f6');
-  doc.fillColor('#333333').fontSize(8).font('Helvetica-Bold');
-  doc.text('PRODUTO', 50, y + 6);
-  doc.text('QTD', 280, y + 6, { width: 30, align: 'center' });
-  doc.text('UN', 320, y + 6, { width: 30, align: 'center' });
-  doc.text('PRECO UNIT.', 360, y + 6, { width: 60, align: 'right' });
-  doc.text('TOTAL', 470, y + 6, { width: 60, align: 'right' });
-
-  y += 28;
-  doc.font('Helvetica').fontSize(8).fillColor('#333333');
+  let itemsHtml = '';
   (items || []).forEach((item, i) => {
-    if (y > 740) { doc.addPage(); y = 40; }
-    if (i % 2 === 0) { doc.rect(40, y - 4, 515, 18).fill('#f9fafb'); }
-    const name = (item.name || 'Item').substring(0, 45);
-    const qty = item.quantity || 1;
-    const unit = item.unit || 'UND';
-    const price = item.price || 0;
+    const name = escapeHtml(item.name || 'Item');
+    const qty = parseInt(item.quantity) || 1;
+    const unit = escapeHtml(item.unit || 'UND');
+    const price = parseFloat(item.price) || 0;
     const total = price * qty;
-    doc.text(name, 50, y);
-    doc.text(String(qty), 280, y, { width: 30, align: 'center' });
-    doc.text(unit, 320, y, { width: 30, align: 'center' });
-    doc.text(`R$ ${price.toFixed(2).replace('.', ',')}`, 360, y, { width: 60, align: 'right' });
-    doc.text(`R$ ${total.toFixed(2).replace('.', ',')}`, 470, y, { width: 60, align: 'right' });
-    y += 18;
+    itemsHtml += `<tr${i % 2 === 0 ? ' class="even"' : ''}><td class="prod">${name}</td><td class="qtd">${qty}</td><td class="un">${unit}</td><td class="preco">${fmtMoney(price)}</td><td class="total">${fmtMoney(total)}</td></tr>`;
   });
 
-  y += 10;
-  const totBoxY = y;
-  doc.rect(370, totBoxY, 185, 5).fill('#f3f4f6');
-  y += 5;
-  doc.fontSize(8).font('Helvetica').fillColor('#666666');
-  doc.text('Subtotal:', 380, y);
-  doc.text(`R$ ${(note.subtotal || 0).toFixed(2).replace('.', ',')}`, 470, y, { width: 75, align: 'right' });
-  y += 15;
-  if ((note.discount || 0) > 0) {
-    doc.text(`Desconto (${note.discount_type === 'percentage' ? note.discount + '%' : 'R$'}):`, 380, y);
-    const discountAmount = note.discount_type === 'percentage' ? (note.subtotal || 0) * (note.discount / 100) : (note.discount || 0);
-    doc.text(`- R$ ${discountAmount.toFixed(2).replace('.', ',')}`, 470, y, { width: 75, align: 'right' });
-    y += 15;
-  }
-  doc.rect(370, y, 185, 1).fill('#333333');
-  y += 6;
-  doc.fontSize(11).font('Helvetica-Bold').fillColor('#1e40af');
-  doc.text('TOTAL:', 380, y);
-  doc.text(`R$ ${(note.total || 0).toFixed(2).replace('.', ',')}`, 470, y, { width: 75, align: 'right' });
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>${note.number}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #333; font-size: 12px; line-height: 1.4; }
+  .header { background: #1e40af; color: #fff; padding: 25px 30px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .header .left h1 { font-size: 20px; margin-bottom: 2px; }
+  .header .left .sub { font-size: 12px; color: #bfdbfe; }
+  .header .left .info { font-size: 10px; color: #bfdbfe; margin-top: 6px; line-height: 1.6; }
+  .header .right { text-align: right; }
+  .header .right .badge { background: #f97316; color: #fff; padding: 6px 18px; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 8px; }
+  .header .right .det { font-size: 11px; color: #bfdbfe; margin-top: 2px; }
+  .section { padding: 20px 30px; border-bottom: 1px solid #e5e7eb; }
+  .section h2 { color: #1e40af; font-size: 13px; font-weight: bold; margin-bottom: 12px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+  .grid2 .label { color: #6b7280; }
+  .grid2 .value { font-weight: 500; }
+  .grid2 .full { grid-column: span 2; }
+  table.items { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.items th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-weight: 600; color: #333; }
+  table.items th.right { text-align: right; }
+  table.items th.center { text-align: center; }
+  table.items td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; }
+  table.items .even { background: #f9fafb; }
+  table.items .prod { max-width: 280px; }
+  table.items .qtd, table.items .un { text-align: center; }
+  table.items .preco, table.items .total { text-align: right; }
+  .totals { margin-top: 15px; display: flex; justify-content: flex-end; }
+  .totals table { width: 220px; font-size: 12px; }
+  .totals td { padding: 4px 0; }
+  .totals .label { color: #6b7280; }
+  .totals .val { text-align: right; }
+  .totals .line { border-top: 2px solid #1e40af; }
+  .totals .big { font-size: 15px; font-weight: bold; color: #1e40af; }
+  .obs { padding: 20px 30px; background: #f9fafb; font-size: 11px; color: #6b7280; }
+  .obs h2 { color: #1e40af; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+  .footer { text-align: center; padding: 15px 30px; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="left">
+      <h1>${storeName}</h1>
+      <div class="sub">Materiais para Construção</div>
+      <div class="info">CNPJ: ${storeCnpj}<br>Tel: ${storePhone}<br>${storeAddress}</div>
+    </div>
+    <div class="right">
+      <div class="badge">${typeLabel}</div>
+      <div class="det">Nº ${note.number}</div>
+      <div class="det">${createdAt}</div>
+      ${note.type === 'sale' && note.payment_method ? `<div class="det">Pagamento: ${escapeHtml(note.payment_method)}</div>` : ''}
+    </div>
+  </div>
 
-  if (note.observations) {
-    y += 25;
-    doc.fillColor('#1e40af').fontSize(10).font('Helvetica-Bold').text('OBSERVACOES', 40, y);
-    y += 14;
-    doc.fillColor('#666666').fontSize(8).font('Helvetica').text(note.observations, 40, y, { width: 515 });
-  }
+  <div class="section">
+    <h2>DADOS DO CLIENTE</h2>
+    <div class="grid2">
+      <div><div class="label">Nome</div><div class="value">${customerName}</div></div>
+      <div><div class="label">Telefone</div><div class="value">${customerPhone}</div></div>
+      ${customerEmail ? `<div><div class="label">Email</div><div class="value">${customerEmail}</div></div>` : ''}
+      ${customerCpf ? `<div><div class="label">CPF</div><div class="value">${customerCpf}</div></div>` : ''}
+      ${customerAddress ? `<div class="full"><div class="label">Endereço</div><div class="value">${customerAddress}</div></div>` : ''}
+      ${attendant ? `<div><div class="label">Atendente</div><div class="value">${attendant}</div></div>` : ''}
+    </div>
+  </div>
 
-  doc.fillColor('#999999').fontSize(7).font('Helvetica').text('Guimaraes Materiais para Construcao - Documento gerado eletronicamente', 40, 780, { align: 'center' });
-  doc.end();
+  <div class="section">
+    <h2>ITENS</h2>
+    <table class="items">
+      <thead>
+        <tr><th>Produto</th><th class="center">Qtd</th><th class="center">Un</th><th class="right">Preço Unit.</th><th class="right">Total</th></tr>
+      </thead>
+      <tbody>
+        ${itemsHtml || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999">Nenhum item</td></tr>'}
+      </tbody>
+    </table>
+    <div class="totals">
+      <table>
+        <tr><td class="label">Subtotal:</td><td class="val">${fmtMoney(subtotal)}</td></tr>
+        ${note.discount > 0 ? `<tr><td class="label">Desconto (${note.discount_type === 'percentage' ? note.discount + '%' : 'R$'}):</td><td class="val">- ${fmtMoney(discountAmount)}</td></tr>` : ''}
+        <tr class="line"><td class="big">TOTAL:</td><td class="val big">${fmtMoney(note.total)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  ${obs ? `<div class="obs"><h2>OBSERVAÇÕES</h2><p>${obs}</p></div>` : ''}
+
+  <div class="footer">${storeName} - CNPJ ${storeCnpj} - Documento gerado eletronicamente</div>
+  ${req.query.print === '1' ? '<script>window.onload=function(){window.print();}</script>' : ''}
+</body>
+</html>`);
 });
 
 // ==================== BANNERS ====================

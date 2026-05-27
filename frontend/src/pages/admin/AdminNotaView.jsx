@@ -38,12 +38,11 @@ export default function AdminNotaView() {
   };
 
   const openPDF = () => {
-    window.open(`${API_URL}/notes/${id}/pdf`, '_blank');
+    window.open(`${API_URL}/notes/${id}/pdf?print=1`, '_blank');
   };
 
   const printPDF = () => {
-    const printWindow = window.open(`${API_URL}/notes/${id}/pdf`, '_blank');
-    if (printWindow) printWindow.onload = () => printWindow.print();
+    window.open(`${API_URL}/notes/${id}/pdf`, '_blank');
   };
 
   const handleShare = async () => {
@@ -93,7 +92,8 @@ export default function AdminNotaView() {
     Dinheiro: 'Dinheiro', PIX: 'PIX', 'Cartão Crédito': 'Cartão Crédito', 'Cartão Débito': 'Cartão Débito'
   };
 
-  const subtotal = note.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const items = Array.isArray(note.items) ? note.items : (typeof note.items === 'string' ? (() => { try { return JSON.parse(note.items); } catch { return []; } })() : []);
+  const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : note.discount;
 
   return (
@@ -182,7 +182,7 @@ export default function AdminNotaView() {
                 </tr>
               </thead>
               <tbody>
-                {note.items.map((item, i) => (
+                {items.map((item, i) => (
                   <tr key={i} className={i % 2 === 0 ? 'bg-gray-50' : ''}>
                     <td className="py-3 px-4">{item.name}</td>
                     <td className="py-3 px-4 text-center">{item.quantity}</td>
