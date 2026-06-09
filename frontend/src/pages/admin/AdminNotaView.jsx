@@ -51,28 +51,106 @@ export default function AdminNotaView() {
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : note.discount;
 
-    const formatCurrency = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
-    const formatDate = (d) => new Date(d).toLocaleDateString('pt-BR');
-    const formatDateTime = (d) => new Date(d).toLocaleString('pt-BR');
+    const W = 46;
+    const L = (s) => { const t = String(s); return t.length >= W ? t.slice(0, W) : t + ' '.repeat(W - t.length); };
+    const C = (s) => { const t = String(s).slice(0, W); const p = W - t.length; return ' '.repeat(Math.floor(p / 2)) + t + ' '.repeat(Math.ceil(p / 2)); };
+    const LR = (l, r) => { const a = String(l), b = String(r); return a.length + b.length >= W ? (a + b).slice(0, W) : a + ' '.repeat(W - a.length - b.length) + b; };
+    const sep = '-'.repeat(W);
+    const dsep = '='.repeat(W);
 
-    const storeName = settings.store_name || 'Guimaraes Materiais para Construcao';
-    const storeCnpj = settings.store_cnpj || '51.803.643/0001-04';
-    const storePhone = settings.store_phone || '';
-    const storeEmail = settings.store_email || '';
-    const storeAddress = settings.store_address || '';
+    const fmt = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+    const fmtD = (d) => new Date(d).toLocaleDateString('pt-BR');
+    const now = new Date();
+    const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    const itemsHtml = items.map(item => {
+    const sName = settings.store_name || 'GUIMARAES MATERIAIS PARA CONSTRUCAO';
+    const sCnpj = settings.store_cnpj || '51.803.643/0001-04';
+    const sIe = settings.store_ie || 'ISENTO';
+    const sPhone = settings.store_phone || '';
+    const sAddr = settings.store_address || '';
+
+    const nameWords = sName.split(' ');
+    const nParts = [];
+    let buf = '';
+    for (const w of nameWords) {
+      if ((buf + ' ' + w).trim().length <= 20) { buf += ' ' + w; } else { nParts.push(buf.trim()); buf = w; }
+    }
+    if (buf.trim()) nParts.push(buf.trim());
+
+    const itemLines = items.map((item, i) => {
+      const seqS = (i + 1).toString().padStart(2, '0');
       const name = item.name || '';
-      const qty = String(item.quantity || 0);
-      const unit = item.unit || 'UN';
-      const price = item.price || 0;
-      const total = price * qty;
-      const priceStr = price.toFixed(2).replace('.', ',');
-      const totalStr = total.toFixed(2).replace('.', ',');
-      return `<tr><td style="padding:2px 4px">${name}</td><td style="padding:2px 4px;text-align:center">${qty}</td><td style="padding:2px 4px;text-align:center">${unit}</td><td style="padding:2px 4px;text-align:right">${priceStr}</td><td style="padding:2px 4px;text-align:right">${totalStr}</td></tr>`;
-    }).join('');
+      const qty = item.quantity || 0;
+      const un = (item.unit || 'UN').slice(0, 2);
+      const pr = item.price || 0;
+      const tt = pr * qty;
+      const nm = `${seqS} ${name.slice(0, 19)}`;
+      const qS = String(qty).padStart(4);
+      const pS = pr.toFixed(2).replace('.', ',');
+      const tS = tt.toFixed(2).replace('.', ',');
+      return L(`${nm}${' '.repeat(Math.max(1, 22 - nm.length))}${qS} ${un} ${pS.padStart(7)} ${tS.padStart(9)}`);
+    }).join('\n');
 
-    const win = window.open('', '_blank', 'width=400,height=600');
+    const cpfTxt = note.customer_cpf ? `\n${L('CPF/CNPJ: ' + note.customer_cpf)}` : '';
+    const addrTxt = note.customer_address ? `\n${L('END: ' + note.customer_address)}` : '';
+
+    let obsTxt = '';
+    if (note.observations) {
+      obsTxt = '\n' + L('OBSERVACOES:') + '\n';
+      const raw = note.observations;
+      for (let i = 0; i < raw.length; i += W) {
+        obsTxt += L(raw.slice(i, i + W)) + '\n';
+      }
+    }
+
+    const discTxt = note.discount > 0
+      ? '\n' + LR(`DESCONTO${note.discount_type === 'percentage' ? ` (${note.discount}%)` : ''}`, `-${fmt(discountAmount)}`)
+      : '';
+
+    const pagStr = note.payment_method ? `\n${L('FORMA PAGAMENTO: ' + note.payment_method)}` : '';
+    const valPago = note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0
+      ? (parseFloat(note.total) - parseFloat(note.pix_discount))
+      : note.total;
+
+    const header = `${dsep}
+${nParts.map(n => C(n)).join('\n')}
+${C('MATERIAIS PARA CONSTRUCAO')}
+${L('')}
+${L('CNPJ: ' + sCnpj)}
+${L('IE: ' + sIe)}
+${sAddr ? L(sAddr) + '\n' : ''}${sPhone ? L('TEL: ' + sPhone) + '\n' : ''}${sep}`;
+
+    const body = `
+${C('CUPOM NAO FISCAL')}
+${sep}
+${LR('NOTA: ' + note.number, fmtD(note.created_at))}
+${L('HORA: ' + hora)}
+${sep}
+${L('CLIENTE: ' + (note.customer_name || '-'))}${cpfTxt}${addrTxt}
+${sep}
+${L('ITENS')}
+${sep}
+${LR('ITEM  PRODUTO', 'QTD  UN  VLR UN.   TOTAL')}
+${sep}
+${itemLines}
+${sep}
+${LR('SUBTOTAL:', fmt(subtotal))}${discTxt}
+${sep}
+${LR('TOTAL:', fmt(note.total))}
+${sep}${pagStr}
+${LR('VALOR PAGO:', fmt(valPago))}
+${sep}${obsTxt}
+${dsep}
+${C('OBRIGADO PELA PREFERENCIA!')}
+${L('')}
+${LR('DATA: ' + fmtD(note.created_at), hora)}
+${L(sName)}
+${L('CNPJ: ' + sCnpj)}
+${dsep}`;
+
+    const cupom = header + body;
+
+    const win = window.open('', '_blank', 'width=420,height=700');
     win.document.write(`<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><title>Cupom ${note.number}</title>
@@ -80,75 +158,28 @@ export default function AdminNotaView() {
   @page { width: 80mm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    width: 80mm;
-    font-family: 'Courier New', 'Courier', monospace;
+    font-family: 'Courier New', 'Courier', 'Lucida Console', monospace;
     font-size: 10px;
-    line-height: 1.3;
+    line-height: 1.2;
     color: #000;
     background: #fff;
-    padding: 3mm;
+    width: 80mm;
   }
-  .header { text-align: center; margin-bottom: 4px; }
-  .header h1 { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-  .header p { font-size: 9px; margin-top: 1px; }
-  .divider { border: none; border-top: 1px dashed #000; margin: 4px 0; }
-  .divider-solid { border: none; border-top: 1px solid #000; margin: 4px 0; }
-  .title { text-align: center; font-weight: bold; font-size: 11px; margin: 4px 0; }
-  .info-table { width: 100%; font-size: 9px; margin: 2px 0; }
-  .info-table td { padding: 1px 2px; vertical-align: top; }
-  .info-table td:last-child { text-align: right; }
-  .section-label { font-weight: bold; font-size: 9px; margin: 3px 0 1px; }
-  table.items { width: 100%; font-size: 9px; border-collapse: collapse; margin: 2px 0; }
-  table.items th { border-bottom: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 8px; }
-  table.items th:first-child { text-align: left; }
-  table.items td { padding: 1px 4px; }
-  .totals { width: 100%; font-size: 9px; margin: 2px 0; }
-  .totals td { padding: 1px 2px; }
-  .totals td:last-child { text-align: right; width: 100px; }
-  .total-row { font-weight: bold; font-size: 11px; }
-  .footer { text-align: center; font-size: 9px; margin-top: 6px; font-weight: bold; }
-  .footer small { font-weight: normal; font-size: 7px; }
-  @media print { body { padding: 2mm; } }
+  pre {
+    font-family: 'Courier New', 'Courier', 'Lucida Console', monospace;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: pre;
+    margin: 0;
+    padding: 2mm;
+  }
+  @media print {
+    @page { width: 80mm; margin: 0; }
+    body { width: 80mm; }
+    pre { padding: 1mm 2mm; }
+  }
 </style></head>
-<body>
-  <div class="header">
-    <h1>${storeName}</h1>
-    <p>CNPJ: ${storeCnpj}</p>
-    ${storeAddress ? `<p>${storeAddress}</p>` : ''}
-    ${storePhone ? `<p>Tel: ${storePhone}</p>` : ''}
-    ${storeEmail ? `<p>${storeEmail}</p>` : ''}
-  </div>
-  <hr class="divider">
-  <div class="title">CUPOM NÃO FISCAL</div>
-  <hr class="divider-solid">
-  <table class="info-table">
-    <tr><td>NOTA: ${note.number}</td><td>${formatDate(note.created_at)}</td></tr>
-    <tr><td>CLIENTE: ${note.customer_name || '-'}</td></tr>
-    <tr><td>FONE: ${note.customer_phone || '-'}</td></tr>
-    ${note.customer_cpf ? `<tr><td>CPF: ${note.customer_cpf}</td></tr>` : ''}
-    ${note.customer_address ? `<tr><td>END: ${note.customer_address}</td></tr>` : ''}
-  </table>
-  <hr class="divider">
-  <div class="section-label">ITENS</div>
-  <table class="items">
-    <thead><tr><th>PRODUTO</th><th>QTD</th><th>UN</th><th>PREÇO</th><th>TOTAL</th></tr></thead>
-    <tbody>${itemsHtml}</tbody>
-  </table>
-  <hr class="divider">
-  <table class="totals">
-    <tr><td>SUBTOTAL:</td><td>${formatCurrency(subtotal)}</td></tr>
-    ${note.discount > 0 ? `<tr><td>DESCONTO (${note.discount_type === 'percentage' ? note.discount + '%' : 'R$'}):</td><td>-${formatCurrency(discountAmount)}</td></tr>` : ''}
-    <tr class="total-row"><td>TOTAL:</td><td>${formatCurrency(note.total)}</td></tr>
-  </table>
-  ${note.payment_method ? `<hr class="divider"><table class="totals"><tr><td>PAGAMENTO: ${note.payment_method}</td></tr></table>` : ''}
-  ${note.observations ? `<hr class="divider"><div class="section-label">OBSERVAÇÕES</div><p style="font-size:8px;white-space:pre-line">${note.observations}</p>` : ''}
-  <hr class="divider-solid">
-  <div class="footer">
-    <p>OBRIGADO PELA PREFERÊNCIA!</p>
-    <small>Documento gerado em ${formatDateTime(note.created_at)}</small>
-    <br><small>${storeName} - ${storeCnpj}</small>
-  </div>
-</body></html>`);
+<body><pre>${cupom}</pre></body></html>`);
     win.document.close();
     win.focus();
     setTimeout(() => { win.print(); }, 500);
