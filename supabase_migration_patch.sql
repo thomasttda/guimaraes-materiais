@@ -46,3 +46,6 @@ INSERT INTO admin_users (name, email, password, role) VALUES
   ('THOMAS', 'thomas@guimaraes.com', 'guimaraes@2026', 'seller'),
   ('THIAGO GUIMARÃES', 'thiago.aag@hotmail.com', 'guimaraes@2026', 'seller')
 ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, password = EXCLUDED.password;
+
+-- 8) Adicionar coluna note_id na tabela deliveries (para vincular entregas a notas)
+ALTER TABLE IF EXISTS deliveries ADD COLUMN IF NOT EXISTS note_id INTEGER REFERENCES notes(id) ON DELETE CASCADE;

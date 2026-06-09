@@ -158,6 +158,36 @@ app.put('/api/orders/:id', async (req, res) => {
 
 // ==================== DELIVERIES ====================
 
+app.post('/api/deliveries', async (req, res) => {
+  const { note_id, driver_id, customer_name, customer_phone, customer_address } = req.body;
+  if (!driver_id || !customer_name || !customer_phone) {
+    return res.status(400).json({ error: 'driver_id, customer_name e customer_phone são obrigatórios' });
+  }
+  const driver = await queryOne('drivers', { where: [{ field: 'id', value: driver_id }] });
+  if (!driver) return res.status(404).json({ error: 'Motorista não encontrado' });
+  const data = await insert('deliveries', {
+    note_id: note_id || null,
+    driver_id,
+    driver_name: driver.name,
+    driver_phone: driver.phone,
+    customer_name,
+    customer_phone,
+    customer_address: customer_address || '',
+    status: 'ready'
+  });
+  if (note_id) {
+    await update('notes', { status: 'confirmed' }, 'id', note_id);
+  }
+  await insert('notifications', {
+    type: 'order_status',
+    title: 'Nova Entrega',
+    message: `Entrega para ${customer_name} atribuída ao motorista ${driver.name}`,
+    reference_id: data[0]?.id,
+    reference_type: 'delivery'
+  });
+  res.status(201).json(data[0]);
+});
+
 app.get('/api/deliveries', async (req, res) => {
   const { status } = req.query;
   let query = supabase.from('deliveries').select('*').order('created_at', { ascending: false });
@@ -166,11 +196,16 @@ app.get('/api/deliveries', async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   // Enrich with driver info
   const enriched = await Promise.all(data.map(async (d) => {
+    let extra = {};
     if (d.driver_id) {
       const { data: drv } = await supabase.from('drivers').select('vehicle, license_plate').eq('id', d.driver_id).single();
-      return { ...d, vehicle: drv?.vehicle || null, license_plate: drv?.license_plate || null };
+      extra = { ...extra, vehicle: drv?.vehicle || null, license_plate: drv?.license_plate || null };
     }
-    return { ...d, vehicle: null, license_plate: null };
+    if (d.note_id) {
+      const { data: nt } = await supabase.from('notes').select('number, items, total').eq('id', d.note_id).single();
+      extra = { ...extra, note_number: nt?.number || null, items: nt?.items || [], total: nt?.total || 0 };
+    }
+    return { ...d, ...extra };
   }));
   res.json(enriched);
 });
@@ -178,7 +213,12 @@ app.get('/api/deliveries', async (req, res) => {
 app.get('/api/deliveries/:id', async (req, res) => {
   const { data: delivery, error } = await supabase.from('deliveries').select('*').eq('id', req.params.id).single();
   if (error || !delivery) return res.status(404).json({ error: 'Entrega não encontrada' });
-  if (delivery.order_id) {
+  if (delivery.note_id) {
+    const { data: note } = await supabase.from('notes').select('number, items, total, type').eq('id', delivery.note_id).single();
+    delivery.note_number = note?.number || null;
+    delivery.items = note?.items || [];
+    delivery.total = note?.total || 0;
+  } else if (delivery.order_id) {
     const { data: order } = await supabase.from('orders').select('items, total').eq('id', delivery.order_id).single();
     delivery.items = order?.items || [];
     delivery.total = order?.total || 0;

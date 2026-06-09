@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, FileText, ShoppingCart, User, Search, Minus, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, FileText, ShoppingCart, User, Search, Minus, Check, Clock, Truck, X as XIcon } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -25,12 +25,17 @@ export default function AdminNotaCreate() {
     items: [], subtotal: 0, discount: 0, discount_type: 'fixed',
     total: 0, observations: '', payment_method: '', pix_discount: 0
   });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDriverModal, setShowDriverModal] = useState(false);
+  const [drivers, setDrivers] = useState([]);
+  const [selectedDriverId, setSelectedDriverId] = useState('');
 
   useEffect(() => {
     fetch(`${API_URL}/products`).then(res => res.json()).then(setProducts).catch(() => {});
     fetch(`${API_URL}/customers`).then(res => res.json()).then(setCustomers).catch(() => {});
     fetch(`${API_URL}/settings`).then(res => res.json()).then(setSettings).catch(() => {});
     fetch(`${API_URL}/sellers`).then(res => res.json()).then(setSellers).catch(() => {});
+    fetch(`${API_URL}/drivers?active=true`).then(res => res.json()).then(setDrivers).catch(() => {});
   }, []);
 
   const openQtySelector = (product) => {
@@ -101,42 +106,63 @@ export default function AdminNotaCreate() {
 
   const { subtotal, total } = calculateTotals();
 
-  const handleSubmit = async (status = 'draft') => {
-    if (!note.customer_name || !note.customer_phone) {
-      alert('Preencha nome e telefone do cliente');
-      return;
-    }
-    if (note.items.length === 0) {
-      alert('Adicione pelo menos um item');
-      return;
-    }
-
+  const saveNote = async (status) => {
     const payload = {
       type, ...note, subtotal, total, status,
       attendant_name: note.attendant_name || settings.store_name
     };
+    const res = await fetch(`${API_URL}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return await res.json();
+  };
 
+  const handleSaveDraft = async () => {
+    if (!note.customer_name || !note.customer_phone) { alert('Preencha nome e telefone do cliente'); return; }
+    if (note.items.length === 0) { alert('Adicione pelo menos um item'); return; }
     try {
-      const res = await fetch(`${API_URL}/notes`, {
+      const data = await saveNote('draft');
+      navigate(`/admin/notas/${data.id}`);
+    } catch { alert('Erro ao salvar rascunho'); }
+  };
+
+  const handleFinishClick = () => {
+    if (!note.customer_name || !note.customer_phone) { alert('Preencha nome e telefone do cliente'); return; }
+    if (note.items.length === 0) { alert('Adicione pelo menos um item'); return; }
+    setShowConfirmModal(true);
+  };
+
+  const handleApproveLater = async () => {
+    setShowConfirmModal(false);
+    try {
+      const data = await saveNote('pending_approval');
+      navigate(`/admin/notas/${data.id}`);
+    } catch { alert('Erro ao salvar nota'); }
+  };
+
+  const handleConfirmNote = async () => {
+    setShowConfirmModal(false);
+    setShowDriverModal(true);
+  };
+
+  const handleAssignDriver = async () => {
+    if (!selectedDriverId) { alert('Selecione um motorista'); return; }
+    setShowDriverModal(false);
+    try {
+      const data = await saveNote('confirmed');
+      await fetch(`${API_URL}/deliveries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          note_id: data.id, driver_id: parseInt(selectedDriverId),
+          customer_name: note.customer_name, customer_phone: note.customer_phone,
+          customer_address: note.customer_address
+        })
       });
-      const data = await res.json();
       navigate(`/admin/notas/${data.id}`);
-
-      // Auto-enviar WhatsApp se status for 'sent'
-      if (status === 'sent' && note.customer_phone) {
-        const cleanPhone = note.customer_phone.replace(/\D/g, '');
-        const phone = cleanPhone.length <= 11 ? '55' + cleanPhone : cleanPhone;
-        const pdfUrl = `${window.location.origin}${API_URL}/notes/${data.id}/pdf`;
-        const typeLabel = type === 'quote' ? 'Orçamento' : 'Nota de Venda';
-        const msg = `Olá querido cliente GUIMARÃES. Segue aqui o seu ${typeLabel} como solicitado! ${pdfUrl}`;
-        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-      }
-    } catch (err) {
-      alert('Erro ao salvar nota');
-    }
+    } catch { alert('Erro ao confirmar nota'); }
   };
 
   const filteredProducts = products.filter(p =>
@@ -164,11 +190,11 @@ export default function AdminNotaCreate() {
             <h1 className="font-bold text-gray-800">Nova Nota</h1>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => handleSubmit('draft')} className="py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
-              <Save className="w-4 h-4" /> Salvar Rascunho
+            <button onClick={handleSaveDraft} className="py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+              <Save className="w-4 h-4" /> Rascunho
             </button>
-            <button onClick={() => handleSubmit('sent')} className="btn-primary flex items-center gap-2">
-              <FileText className="w-4 h-4" /> Finalizar e Enviar
+            <button onClick={handleFinishClick} className="btn-primary flex items-center gap-2">
+              <Check className="w-4 h-4" /> Finalizar
             </button>
           </div>
         </div>
@@ -358,11 +384,11 @@ export default function AdminNotaCreate() {
               </div>
 
               <div className="mt-6 space-y-3">
-                <button onClick={() => handleSubmit('draft')} className="w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2">
-                  <Save className="w-4 h-4" /> Salvar Rascunho
+                <button onClick={handleSaveDraft} className="w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center gap-2">
+                  <Save className="w-4 h-4" /> Rascunho
                 </button>
-                <button onClick={() => handleSubmit('sent')} className="w-full btn-primary flex items-center justify-center gap-2">
-                  <FileText className="w-4 h-4" /> Finalizar e Enviar
+                <button onClick={handleFinishClick} className="w-full btn-primary flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4" /> Finalizar
                 </button>
               </div>
             </div>
@@ -457,9 +483,84 @@ export default function AdminNotaCreate() {
                 <button onClick={() => setShowCustomerModal(false)} className="w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Fechar</button>
               </div>
             </div>
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Confirm Modal (slide-up) */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShowConfirmModal(false)}>
+          <div className="fixed inset-0 bg-black/50" />
+          <div className="relative bg-white w-full rounded-t-3xl p-6 animate-slide-up max-w-lg mx-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+            </div>
+            <h2 className="text-xl font-bold text-center mb-6">Finalizar Nota</h2>
+            <div className="space-y-4">
+              <button onClick={handleConfirmNote} className="w-full p-5 bg-green-50 border-2 border-green-500 rounded-2xl flex items-center gap-4 hover:bg-green-100 transition-colors">
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                  <Check className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-lg text-green-800">Confirmar NOTA</p>
+                  <p className="text-sm text-green-600">Nota confirmada com entrega</p>
+                </div>
+              </button>
+              <button onClick={handleApproveLater} className="w-full p-5 bg-yellow-50 border-2 border-yellow-500 rounded-2xl flex items-center gap-4 hover:bg-yellow-100 transition-colors">
+                <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-lg text-yellow-800">Aguardando aprovação</p>
+                  <p className="text-sm text-yellow-600">Nota salva sem confirmação</p>
+                </div>
+              </button>
+            </div>
+            <button onClick={() => setShowConfirmModal(false)} className="w-full mt-6 py-3 text-gray-500 hover:text-gray-700 font-medium">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Driver Selection Modal (slide-up) */}
+      {showDriverModal && (
+        <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShowDriverModal(false)}>
+          <div className="fixed inset-0 bg-black/50" />
+          <div className="relative bg-white w-full rounded-t-3xl p-6 animate-slide-up max-w-lg mx-auto max-h-[70vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+            </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Selecionar Motorista</h2>
+              <button onClick={() => setShowDriverModal(false)} className="text-gray-400 hover:text-gray-600">
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Escolha o motorista para realizar a entrega</p>
+            <div className="space-y-3">
+              {drivers.filter(d => d.active !== false).map(d => (
+                <label key={d.id} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-colors ${selectedDriverId == d.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <input type="radio" name="driver" value={d.id} checked={selectedDriverId == d.id} onChange={() => setSelectedDriverId(d.id)} className="sr-only" />
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedDriverId == d.id ? 'bg-blue-500' : 'bg-gray-200'}`}>
+                    <Truck className={`w-5 h-5 ${selectedDriverId == d.id ? 'text-white' : 'text-gray-500'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold">{d.name}</p>
+                    <p className="text-sm text-gray-500">{d.vehicle || 'Sem veículo'} {d.license_plate ? `- ${d.license_plate}` : ''}</p>
+                  </div>
+                  {selectedDriverId == d.id && <Check className="w-5 h-5 text-blue-500" />}
+                </label>
+              ))}
+              {drivers.length === 0 && <p className="text-center py-4 text-gray-500">Nenhum motorista ativo</p>}
+            </div>
+            <button onClick={handleAssignDriver} disabled={!selectedDriverId} className="w-full mt-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+              Confirmar e Atribuir Entrega
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

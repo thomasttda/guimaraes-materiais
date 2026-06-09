@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, Menu, X, Bell, Home, User } from 'lucide-react';
+import { ShoppingCart, Menu, X, Bell, Home, User, Settings } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import logo from '/logo.png';
 
@@ -56,6 +56,9 @@ export default function Layout() {
               <button className="relative text-gray-600 hover:text-primary-500">
                 <Bell className="w-6 h-6" />
               </button>
+              <Link to="/admin/login" className="text-gray-600 hover:text-primary-500" title="Painel Admin">
+                <Settings className="w-6 h-6" />
+              </Link>
               <Link to="/carrinho" className="relative text-gray-600 hover:text-primary-500">
                 <ShoppingCart className="w-6 h-6" />
                 {itemCount > 0 && (
