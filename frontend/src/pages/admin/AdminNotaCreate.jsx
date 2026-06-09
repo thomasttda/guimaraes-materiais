@@ -483,9 +483,8 @@ export default function AdminNotaCreate() {
                 <button onClick={() => setShowCustomerModal(false)} className="w-full py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Fechar</button>
               </div>
             </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Confirm Modal (slide-up) */}
