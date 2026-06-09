@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Printer, Edit2, Check, X, FileText, ShoppingCart, Share2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Download, Printer, Edit2, Check, X, FileText, ShoppingCart, Share2, MessageCircle, ReceiptText } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -43,6 +43,115 @@ export default function AdminNotaView() {
 
   const printPDF = () => {
     window.open(`${API_URL}/notes/${id}/pdf`, '_blank');
+  };
+
+  const printCupom = () => {
+    if (!note) return;
+    const items = Array.isArray(note.items) ? note.items : (typeof note.items === 'string' ? (() => { try { return JSON.parse(note.items); } catch { return []; } })() : []);
+    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : note.discount;
+
+    const formatCurrency = (v) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+    const formatDate = (d) => new Date(d).toLocaleDateString('pt-BR');
+    const formatDateTime = (d) => new Date(d).toLocaleString('pt-BR');
+
+    const storeName = settings.store_name || 'Guimaraes Materiais para Construcao';
+    const storeCnpj = settings.store_cnpj || '51.803.643/0001-04';
+    const storePhone = settings.store_phone || '';
+    const storeEmail = settings.store_email || '';
+    const storeAddress = settings.store_address || '';
+
+    const itemsHtml = items.map(item => {
+      const name = item.name || '';
+      const qty = String(item.quantity || 0);
+      const unit = item.unit || 'UN';
+      const price = item.price || 0;
+      const total = price * qty;
+      const priceStr = price.toFixed(2).replace('.', ',');
+      const totalStr = total.toFixed(2).replace('.', ',');
+      return `<tr><td style="padding:2px 4px">${name}</td><td style="padding:2px 4px;text-align:center">${qty}</td><td style="padding:2px 4px;text-align:center">${unit}</td><td style="padding:2px 4px;text-align:right">${priceStr}</td><td style="padding:2px 4px;text-align:right">${totalStr}</td></tr>`;
+    }).join('');
+
+    const win = window.open('', '_blank', 'width=400,height=600');
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Cupom ${note.number}</title>
+<style>
+  @page { width: 80mm; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 80mm;
+    font-family: 'Courier New', 'Courier', monospace;
+    font-size: 10px;
+    line-height: 1.3;
+    color: #000;
+    background: #fff;
+    padding: 3mm;
+  }
+  .header { text-align: center; margin-bottom: 4px; }
+  .header h1 { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+  .header p { font-size: 9px; margin-top: 1px; }
+  .divider { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+  .divider-solid { border: none; border-top: 1px solid #000; margin: 4px 0; }
+  .title { text-align: center; font-weight: bold; font-size: 11px; margin: 4px 0; }
+  .info-table { width: 100%; font-size: 9px; margin: 2px 0; }
+  .info-table td { padding: 1px 2px; vertical-align: top; }
+  .info-table td:last-child { text-align: right; }
+  .section-label { font-weight: bold; font-size: 9px; margin: 3px 0 1px; }
+  table.items { width: 100%; font-size: 9px; border-collapse: collapse; margin: 2px 0; }
+  table.items th { border-bottom: 1px solid #000; padding: 2px 4px; text-align: center; font-size: 8px; }
+  table.items th:first-child { text-align: left; }
+  table.items td { padding: 1px 4px; }
+  .totals { width: 100%; font-size: 9px; margin: 2px 0; }
+  .totals td { padding: 1px 2px; }
+  .totals td:last-child { text-align: right; width: 100px; }
+  .total-row { font-weight: bold; font-size: 11px; }
+  .footer { text-align: center; font-size: 9px; margin-top: 6px; font-weight: bold; }
+  .footer small { font-weight: normal; font-size: 7px; }
+  @media print { body { padding: 2mm; } }
+</style></head>
+<body>
+  <div class="header">
+    <h1>${storeName}</h1>
+    <p>CNPJ: ${storeCnpj}</p>
+    ${storeAddress ? `<p>${storeAddress}</p>` : ''}
+    ${storePhone ? `<p>Tel: ${storePhone}</p>` : ''}
+    ${storeEmail ? `<p>${storeEmail}</p>` : ''}
+  </div>
+  <hr class="divider">
+  <div class="title">CUPOM NÃO FISCAL</div>
+  <hr class="divider-solid">
+  <table class="info-table">
+    <tr><td>NOTA: ${note.number}</td><td>${formatDate(note.created_at)}</td></tr>
+    <tr><td>CLIENTE: ${note.customer_name || '-'}</td></tr>
+    <tr><td>FONE: ${note.customer_phone || '-'}</td></tr>
+    ${note.customer_cpf ? `<tr><td>CPF: ${note.customer_cpf}</td></tr>` : ''}
+    ${note.customer_address ? `<tr><td>END: ${note.customer_address}</td></tr>` : ''}
+  </table>
+  <hr class="divider">
+  <div class="section-label">ITENS</div>
+  <table class="items">
+    <thead><tr><th>PRODUTO</th><th>QTD</th><th>UN</th><th>PREÇO</th><th>TOTAL</th></tr></thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
+  <hr class="divider">
+  <table class="totals">
+    <tr><td>SUBTOTAL:</td><td>${formatCurrency(subtotal)}</td></tr>
+    ${note.discount > 0 ? `<tr><td>DESCONTO (${note.discount_type === 'percentage' ? note.discount + '%' : 'R$'}):</td><td>-${formatCurrency(discountAmount)}</td></tr>` : ''}
+    <tr class="total-row"><td>TOTAL:</td><td>${formatCurrency(note.total)}</td></tr>
+  </table>
+  ${note.payment_method ? `<hr class="divider"><table class="totals"><tr><td>PAGAMENTO: ${note.payment_method}</td></tr></table>` : ''}
+  ${note.observations ? `<hr class="divider"><div class="section-label">OBSERVAÇÕES</div><p style="font-size:8px;white-space:pre-line">${note.observations}</p>` : ''}
+  <hr class="divider-solid">
+  <div class="footer">
+    <p>OBRIGADO PELA PREFERÊNCIA!</p>
+    <small>Documento gerado em ${formatDateTime(note.created_at)}</small>
+    <br><small>${storeName} - ${storeCnpj}</small>
+  </div>
+</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 500);
   };
 
   const handleShare = async () => {
@@ -115,6 +224,7 @@ export default function AdminNotaView() {
             <button onClick={handleShare} className="py-2 px-3 border border-emerald-300 text-emerald-600 rounded-lg hover:bg-emerald-50 flex items-center gap-1 text-sm"><Share2 className="w-4 h-4" /> Compartilhar</button>
             <button onClick={openPDF} className="btn-secondary flex items-center gap-1 text-sm px-3 py-2"><Download className="w-4 h-4" /> PDF</button>
             <button onClick={printPDF} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm"><Printer className="w-4 h-4" /> Imprimir</button>
+            <button onClick={printCupom} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm"><ReceiptText className="w-4 h-4" /> Cupom</button>
             <Link to={`/admin/notas/${id}/editar`} className="text-blue-600 hover:text-blue-800 p-2"><Edit2 className="w-5 h-5" /></Link>
           </div>
         </div>
