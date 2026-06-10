@@ -996,13 +996,13 @@ app.post('/api/notes', async (req, res) => {
     }
   }
 
-  // Try with pix_discount first (for databases that have the column), fallback without
+  // Try with pix_discount/installments first, fallback without
   let data;
   try {
     data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0, installments: installments || 1 });
   } catch (e) {
-    if (e.message && e.message.includes('pix_discount')) {
-      data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', installments: installments || 1 });
+    if (e.message && (e.message.includes('pix_discount') || e.message.includes('installments'))) {
+      data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
     } else {
       throw e;
     }
@@ -1028,8 +1028,9 @@ app.put('/api/notes/:id', async (req, res) => {
   try {
     data = await update('notes', updates, 'id', req.params.id);
   } catch (e) {
-    if (e.message && e.message.includes('pix_discount')) {
+    if (e.message && (e.message.includes('pix_discount') || e.message.includes('installments'))) {
       delete updates.pix_discount;
+      delete updates.installments;
       data = await update('notes', updates, 'id', req.params.id);
     } else {
       throw e;
