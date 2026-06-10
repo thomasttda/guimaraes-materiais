@@ -28,6 +28,7 @@ import AdminNotaView from './pages/admin/AdminNotaView';
 import AdminMonitorMap from './pages/admin/AdminMonitorMap';
 import AdminLogsMotoristas from './pages/admin/AdminLogsMotoristas';
 import AdminVendedores from './pages/admin/AdminVendedores';
+import AdminFloatingButton from './components/AdminFloatingButton';
 import DriverLogin from './pages/DriverLogin';
 import DriverDashboard from './pages/DriverDashboard';
 import DriverDeliveryDetail from './pages/DriverDeliveryDetail';
@@ -36,7 +37,7 @@ function ProtectedRoute({ children }) {
   const { admin, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Carregando...</div>;
   if (!admin) return <Navigate to="/admin/login" replace />;
-  return children;
+  return <>{children}<AdminFloatingButton /></>;
 }
 
 function App() {

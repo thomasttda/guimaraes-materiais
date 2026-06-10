@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Save, FileText, ShoppingCart, User, Search, Minus, Check, Clock, Truck, X as XIcon } from 'lucide-react';
 
 const API_URL = '/api';
@@ -7,7 +7,8 @@ const API_URL = '/api';
 export default function AdminNotaCreate() {
   const navigate = useNavigate();
   const { id: editId } = useParams();
-  const [type, setType] = useState('quote');
+  const location = useLocation();
+  const [type, setType] = useState(location.state?.initialType || 'quote');
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
