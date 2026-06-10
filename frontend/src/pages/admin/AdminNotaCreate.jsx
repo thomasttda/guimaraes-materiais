@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, Save, FileText, ShoppingCart, User, Search, Minus, Check, Clock, Truck, X as XIcon } from 'lucide-react';
 
 const API_URL = '/api';
 
 export default function AdminNotaCreate() {
   const navigate = useNavigate();
+  const { id: editId } = useParams();
   const [type, setType] = useState('quote');
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [settings, setSettings] = useState({});
@@ -36,7 +38,32 @@ export default function AdminNotaCreate() {
     fetch(`${API_URL}/settings`).then(res => res.json()).then(setSettings).catch(() => {});
     fetch(`${API_URL}/sellers`).then(res => res.json()).then(setSellers).catch(() => {});
     fetch(`${API_URL}/drivers?active=true`).then(res => res.json()).then(setDrivers).catch(() => {});
-  }, []);
+    if (editId) {
+      setLoadingEdit(true);
+      fetch(`${API_URL}/notes/${editId}`).then(res => res.json()).then(data => {
+        if (data) {
+          setType(data.type || 'quote');
+          setNote({
+            customer_name: data.customer_name || '',
+            customer_phone: data.customer_phone || '',
+            customer_email: data.customer_email || '',
+            customer_address: data.customer_address || '',
+            customer_cpf: data.customer_cpf || '',
+            attendant_name: data.attendant_name || '',
+            items: Array.isArray(data.items) ? data.items : [],
+            subtotal: data.subtotal || 0,
+            discount: data.discount || 0,
+            discount_type: data.discount_type || 'fixed',
+            total: data.total || 0,
+            observations: data.observations || '',
+            payment_method: data.payment_method || '',
+            pix_discount: data.pix_discount || 0
+          });
+        }
+        setLoadingEdit(false);
+      }).catch(() => setLoadingEdit(false));
+    }
+  }, [editId]);
 
   const openQtySelector = (product) => {
     const existing = note.items.find(i => i.id === product.id);
@@ -111,8 +138,10 @@ export default function AdminNotaCreate() {
       type, ...note, subtotal, total, status,
       attendant_name: note.attendant_name || settings.store_name
     };
-    const res = await fetch(`${API_URL}/notes`, {
-      method: 'POST',
+    const method = editId ? 'PUT' : 'POST';
+    const url = editId ? `${API_URL}/notes/${editId}` : `${API_URL}/notes`;
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
@@ -145,6 +174,14 @@ export default function AdminNotaCreate() {
   const handleConfirmNote = async () => {
     setShowConfirmModal(false);
     setShowDriverModal(true);
+  };
+
+  const handleBalcao = async () => {
+    setShowConfirmModal(false);
+    try {
+      const data = await saveNote('confirmed');
+      navigate(`/admin/notas/${data.id}`);
+    } catch { alert('Erro ao finalizar venda'); }
   };
 
   const handleAssignDriver = async () => {
@@ -181,13 +218,19 @@ export default function AdminNotaCreate() {
     { value: 'Cartão Débito', label: 'Cartão Débito' },
   ];
 
+  if (loadingEdit) return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <p className="text-gray-500 text-lg">Carregando nota...</p>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/admin/notas')} className="text-gray-600 hover:text-primary-600"><ArrowLeft className="w-5 h-5" /></button>
-            <h1 className="font-bold text-gray-800">Nova Nota</h1>
+            <h1 className="font-bold text-gray-800">{editId ? 'Editar Nota' : 'Nova Nota'}</h1>
           </div>
           <div className="flex gap-3">
             <button onClick={handleSaveDraft} className="py-2 px-4 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
@@ -497,6 +540,15 @@ export default function AdminNotaCreate() {
             </div>
             <h2 className="text-xl font-bold text-center mb-6">Finalizar Nota</h2>
             <div className="space-y-4">
+              <button onClick={handleBalcao} className="w-full p-5 bg-blue-50 border-2 border-blue-500 rounded-2xl flex items-center gap-4 hover:bg-blue-100 transition-colors">
+                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                  <ShoppingCart className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-lg text-blue-800">VENDA NO BALCÃO</p>
+                  <p className="text-sm text-blue-600">Venda finalizada sem entrega</p>
+                </div>
+              </button>
               <button onClick={handleConfirmNote} className="w-full p-5 bg-green-50 border-2 border-green-500 rounded-2xl flex items-center gap-4 hover:bg-green-100 transition-colors">
                 <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
                   <Check className="w-6 h-6 text-white" />

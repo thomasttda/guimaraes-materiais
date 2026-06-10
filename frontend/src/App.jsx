@@ -73,6 +73,7 @@ function App() {
             <Route path="/admin/notas" element={<ProtectedRoute><AdminNotas /></ProtectedRoute>} />
             <Route path="/admin/notas/nova" element={<ProtectedRoute><AdminNotaCreate /></ProtectedRoute>} />
             <Route path="/admin/notas/:id" element={<ProtectedRoute><AdminNotaView /></ProtectedRoute>} />
+            <Route path="/admin/notas/:id/editar" element={<ProtectedRoute><AdminNotaCreate /></ProtectedRoute>} />
             <Route path="/entregador/login" element={<DriverLogin />} />
             <Route path="/entregador" element={<DriverDashboard />} />
             <Route path="/entregador/entrega/:id" element={<DriverDeliveryDetail />} />
