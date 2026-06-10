@@ -74,8 +74,32 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.get('/api/categories', async (req, res) => {
   const products = await queryAll('products', { select: 'category', order: { field: 'category' } });
-  const cats = [...new Set(products.map(p => p.category))];
+  const cats = [...new Set(products.map(p => p.category).filter(Boolean))];
   res.json(cats);
+});
+
+app.post('/api/categories', async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nome da categoria é obrigatório' });
+  const cat = name.trim();
+  const products = await queryAll('products', { select: 'category' });
+  if (products.some(p => p.category === cat)) return res.status(409).json({ error: 'Categoria já existe' });
+  res.status(201).json({ name: cat });
+});
+
+app.put('/api/categories/:name', async (req, res) => {
+  const { name } = req.params;
+  const { newName } = req.body;
+  if (!newName || !newName.trim()) return res.status(400).json({ error: 'Novo nome é obrigatório' });
+  const trimmed = newName.trim();
+  await update('products', { category: trimmed }, 'category', name);
+  res.json({ oldName: name, newName: trimmed });
+});
+
+app.delete('/api/categories/:name', async (req, res) => {
+  const { name } = req.params;
+  await update('products', { category: '' }, 'category', name);
+  res.json({ deleted: name });
 });
 
 app.post('/api/products', async (req, res) => {

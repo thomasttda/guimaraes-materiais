@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, Trash2, ArrowLeft, Search, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -10,14 +10,20 @@ export default function AdminProducts() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [showCatModal, setShowCatModal] = useState(false);
+  const [catForm, setCatForm] = useState({ name: '', editName: null });
+  const [catRefresh, setCatRefresh] = useState(0);
   const [form, setForm] = useState({
     name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0,
   });
 
   useEffect(() => {
     fetchProducts();
-    fetch(`${API_URL}/categories`).then(res => res.json()).then(setCategories).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetch(`${API_URL}/categories`).then(res => res.json()).then(setCategories).catch(() => {});
+  }, [catRefresh]);
 
   const fetchProducts = () => {
     fetch(`${API_URL}/products`).then(res => res.json()).then(setProducts).catch(() => {});
@@ -91,9 +97,14 @@ export default function AdminProducts() {
             <Link to="/admin" className="text-gray-600 hover:text-primary-600"><ArrowLeft className="w-5 h-5" /></Link>
             <h1 className="font-bold text-gray-800">Gerenciar Produtos</h1>
           </div>
-          <button onClick={() => { resetForm(); setShowForm(true); }} className="btn-primary flex items-center gap-2">
-            <Plus className="w-5 h-5" /> Novo Produto
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
+              <Tag className="w-4 h-4" /> Categorias
+            </button>
+            <button onClick={() => { resetForm(); setShowForm(true); }} className="btn-primary flex items-center gap-2">
+              <Plus className="w-5 h-5" /> Novo Produto
+            </button>
+          </div>
         </div>
       </header>
 
@@ -171,6 +182,67 @@ export default function AdminProducts() {
                   <button type="submit" className="flex-1 btn-primary">{editing ? 'Salvar' : 'Criar'}</button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Category Management Modal */}
+        {showCatModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+              <div className="p-6 border-b flex items-center justify-between">
+                <h2 className="text-xl font-bold">Gerenciar Categorias</h2>
+                <button onClick={() => { setShowCatModal(false); setCatForm({ name: '', editName: null }); }}><X className="w-6 h-6 text-gray-400" /></button>
+              </div>
+              <div className="p-4 border-b flex gap-2">
+                <input type="text" value={catForm.name} onChange={e => setCatForm({...catForm, name: e.target.value})} placeholder="Nova categoria..." className="input-field flex-1" />
+                <button onClick={async () => {
+                  if (!catForm.name.trim()) return;
+                  try {
+                    if (catForm.editName) {
+                      await fetch(`${API_URL}/categories/${encodeURIComponent(catForm.editName)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newName: catForm.name }) });
+                    } else {
+                      await fetch(`${API_URL}/categories`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: catForm.name }) });
+                    }
+                    setCatForm({ name: '', editName: null });
+                    setCatRefresh(c => c + 1);
+                  } catch { alert('Erro ao salvar categoria'); }
+                }} className="btn-primary whitespace-nowrap">
+                  <Check className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4">
+                <div className="space-y-2">
+                  {categories.map(cat => (
+                    <div key={cat} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
+                      {catForm.editName === cat ? (
+                        <input type="text" value={catForm.name} onChange={e => setCatForm({...catForm, name: e.target.value})} className="input-field flex-1 mr-2" autoFocus />
+                      ) : (
+                        <span className="font-medium text-sm">{cat}</span>
+                      )}
+                      <div className="flex items-center gap-2">
+                        {catForm.editName === cat ? (
+                          <>
+                            <button onClick={() => setCatForm({ name: '', editName: null })} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => setCatForm({ name: cat, editName: cat })} className="text-blue-600 hover:text-blue-800"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={async () => {
+                              if (!confirm(`Remover categoria "${cat}"?`)) return;
+                              try {
+                                await fetch(`${API_URL}/categories/${encodeURIComponent(cat)}`, { method: 'DELETE' });
+                                setCatRefresh(c => c + 1);
+                              } catch { alert('Erro ao remover categoria'); }
+                            }} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {categories.length === 0 && <p className="text-center py-8 text-gray-500">Nenhuma categoria</p>}
+                </div>
+              </div>
             </div>
           </div>
         )}
