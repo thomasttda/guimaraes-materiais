@@ -5,6 +5,17 @@ const { startServer } = require('./src/server');
 let mainWindow;
 let serverPort;
 
+function getIconPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'icon.ico');
+  }
+  return path.join(__dirname, 'icon.ico');
+}
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.guimaraes.materiais.desktop');
+}
+
 async function createWindow() {
   serverPort = await startServer();
 
@@ -14,7 +25,7 @@ async function createWindow() {
     minWidth: 1024,
     minHeight: 600,
     title: 'Guimarães Materiais',
-    icon: path.join(__dirname, '..', 'logo-guimaraes.png'),
+    icon: getIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

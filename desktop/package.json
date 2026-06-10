@@ -23,6 +23,10 @@
     ],
     "extraResources": [
       {
+        "from": "icon.ico",
+        "to": "icon.ico"
+      },
+      {
         "from": "../frontend/dist",
         "to": "frontend-dist",
         "filter": ["**/*"]
