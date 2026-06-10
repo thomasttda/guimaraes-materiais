@@ -107,6 +107,10 @@ export default function AdminNotaView() {
       ? '\n' + LR(`DESCONTO${note.discount_type === 'percentage' ? ` (${note.discount}%)` : ''}`, `-${fmt(discountAmount)}`)
       : '';
 
+    const isCredit = note.payment_method === 'Cartão Crédito' || note.payment_method === 'Cartao Credito';
+    const parcStr = isCredit && note.installments > 1
+      ? `\n${L(`${note.installments}x DE R$ ${(note.total / note.installments).toFixed(2)}}`)}`
+      : isCredit ? `\n${L('AVISTA')}` : '';
     const pagStr = note.payment_method ? `\n${L('FORMA PAGAMENTO: ' + note.payment_method)}` : '';
     const valPago = note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0
       ? (parseFloat(note.total) - parseFloat(note.pix_discount))
@@ -137,7 +141,7 @@ ${sep}
 ${LR('SUBTOTAL:', fmt(subtotal))}${discTxt}
 ${sep}
 ${LR('TOTAL:', fmt(note.total))}
-${sep}${pagStr}
+${sep}${pagStr}${parcStr}
 ${LR('VALOR PAGO:', fmt(valPago))}
 ${sep}${obsTxt}
 ${dsep}
@@ -289,6 +293,9 @@ ${dsep}`;
                 <p className="text-blue-200">{new Date(note.created_at).toLocaleDateString('pt-BR')}</p>
                 {note.type === 'sale' && note.payment_method && (
                   <p className="text-blue-200 text-sm mt-1">Pagamento: {note.payment_method}</p>
+                )}
+                {note.type === 'sale' && (note.payment_method === 'Cartão Crédito' || note.payment_method === 'Cartao Credito') && (
+                  <p className="text-blue-200 text-sm mt-1">{note.installments > 1 ? `${note.installments}x R$ ${(note.total / note.installments).toFixed(2).replace('.', ',')}` : 'À vista'}</p>
                 )}
                 {note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 && (
                   <p className="text-blue-200 text-xs mt-1">Desc. PIX: R$ {parseFloat(note.pix_discount).toFixed(2).replace('.', ',')}</p>

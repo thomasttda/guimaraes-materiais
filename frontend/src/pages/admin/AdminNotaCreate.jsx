@@ -26,7 +26,7 @@ export default function AdminNotaCreate() {
     customer_name: '', customer_phone: '', customer_email: '',
     customer_address: '', customer_cpf: '', attendant_name: '',
     items: [], subtotal: 0, discount: 0, discount_type: 'fixed',
-    total: 0, observations: '', payment_method: '', pix_discount: 0
+    total: 0, observations: '', payment_method: '', pix_discount: 0, installments: 1
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDriverModal, setShowDriverModal] = useState(false);
@@ -58,7 +58,8 @@ export default function AdminNotaCreate() {
             total: data.total || 0,
             observations: data.observations || '',
             payment_method: data.payment_method || '',
-            pix_discount: data.pix_discount || 0
+            pix_discount: data.pix_discount || 0,
+            installments: data.installments || 1
           });
         }
         setLoadingEdit(false);
@@ -405,6 +406,16 @@ export default function AdminNotaCreate() {
                     <input type="number" step="0.01" value={note.discount} onChange={e => setNote({...note, discount: parseFloat(e.target.value) || 0})} className="input-field text-sm" />
                   </div>
                 </div>
+                {note.payment_method === 'Cartão Crédito' && (
+                  <div className="border-t pt-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Parcelas</label>
+                    <select value={note.installments} onChange={e => setNote({...note, installments: parseInt(e.target.value)})} className="input-field text-sm">
+                      {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                        <option key={n} value={n}>{n}x {n > 1 ? `R$ ${(total / n).toFixed(2).replace('.', ',')}` : 'À vista'}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {note.payment_method === 'PIX' && (
                   <div className="border-t pt-3">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Desconto PIX (R$)</label>

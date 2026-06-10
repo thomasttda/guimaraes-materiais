@@ -981,7 +981,7 @@ app.get('/api/notes/:id', async (req, res) => {
 });
 
 app.post('/api/notes', async (req, res) => {
-  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method, pix_discount } = req.body;
+  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method, pix_discount, installments } = req.body;
   const number = await generateNoteNumber(type, customer_name);
 
   // Auto-register customer if not exists
@@ -999,10 +999,10 @@ app.post('/api/notes', async (req, res) => {
   // Try with pix_discount first (for databases that have the column), fallback without
   let data;
   try {
-    data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0 });
+    data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0, installments: installments || 1 });
   } catch (e) {
     if (e.message && e.message.includes('pix_discount')) {
-      data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
+      data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', installments: installments || 1 });
     } else {
       throw e;
     }
@@ -1013,7 +1013,7 @@ app.post('/api/notes', async (req, res) => {
 });
 
 app.put('/api/notes/:id', async (req, res) => {
-  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method', 'pix_discount'];
+  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method', 'pix_discount', 'installments'];
   const updates = {};
   let oldStatus;
   if (req.body.status !== undefined) {
