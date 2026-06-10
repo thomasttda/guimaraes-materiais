@@ -51,7 +51,7 @@ export default function AdminNotaView() {
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : note.discount;
 
-    const W = 46;
+    const W = 38;
     const L = (s) => { const t = String(s); return t.length >= W ? t.slice(0, W) : t + ' '.repeat(W - t.length); };
     const C = (s) => { const t = String(s).slice(0, W); const p = W - t.length; return ' '.repeat(Math.floor(p / 2)) + t + ' '.repeat(Math.ceil(p / 2)); };
     const LR = (l, r) => { const a = String(l), b = String(r); return a.length + b.length >= W ? (a + b).slice(0, W) : a + ' '.repeat(W - a.length - b.length) + b; };
@@ -73,7 +73,7 @@ export default function AdminNotaView() {
     const nParts = [];
     let buf = '';
     for (const w of nameWords) {
-      if ((buf + ' ' + w).trim().length <= 20) { buf += ' ' + w; } else { nParts.push(buf.trim()); buf = w; }
+      if ((buf + ' ' + w).trim().length <= 16) { buf += ' ' + w; } else { nParts.push(buf.trim()); buf = w; }
     }
     if (buf.trim()) nParts.push(buf.trim());
 
@@ -84,11 +84,11 @@ export default function AdminNotaView() {
       const un = (item.unit || 'UN').slice(0, 2);
       const pr = item.price || 0;
       const tt = pr * qty;
-      const nm = `${seqS} ${name.slice(0, 19)}`;
-      const qS = String(qty).padStart(4);
+      const nm = `${seqS} ${name.slice(0, 14)}`;
+      const qS = String(qty).padStart(3);
       const pS = pr.toFixed(2).replace('.', ',');
       const tS = tt.toFixed(2).replace('.', ',');
-      return L(`${nm}${' '.repeat(Math.max(1, 22 - nm.length))}${qS} ${un} ${pS.padStart(7)} ${tS.padStart(9)}`);
+      return L(`${nm}${' '.repeat(Math.max(1, 17 - nm.length))}${qS} ${un} ${pS.padStart(7)} ${tS.padStart(9)}`);
     }).join('\n');
 
     const cpfTxt = note.customer_cpf ? `\n${L('CPF/CNPJ: ' + note.customer_cpf)}` : '';
@@ -155,28 +155,32 @@ ${dsep}`;
 <html>
 <head><meta charset="UTF-8"><title>Cupom ${note.number}</title>
 <style>
-  @page { width: 80mm; margin: 0; }
+  @page { width: 80mm; margin: 2mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Courier New', 'Courier', 'Lucida Console', monospace;
-    font-size: 10px;
-    line-height: 1.2;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1.25;
     color: #000;
     background: #fff;
     width: 80mm;
   }
   pre {
     font-family: 'Courier New', 'Courier', 'Lucida Console', monospace;
-    font-size: 10px;
-    line-height: 1.2;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1.25;
     white-space: pre;
     margin: 0;
-    padding: 2mm;
+    padding: 3mm;
+    text-shadow: 0 0 0.3px #000;
+    -webkit-text-stroke: 0.2px #000;
   }
   @media print {
-    @page { width: 80mm; margin: 0; }
+    @page { width: 80mm; margin: 2mm; }
     body { width: 80mm; }
-    pre { padding: 1mm 2mm; }
+    pre { padding: 0 3mm; }
   }
 </style></head>
 <body><pre>${cupom}</pre></body></html>`);
