@@ -120,7 +120,7 @@ export default function AdminNotaCreate() {
   };
 
   const handleSaveDraft = async () => {
-    if (!note.customer_name || !note.customer_phone) { alert('Preencha nome e telefone do cliente'); return; }
+    if (!note.customer_name) { alert('Preencha o nome do cliente'); return; }
     if (note.items.length === 0) { alert('Adicione pelo menos um item'); return; }
     try {
       const data = await saveNote('draft');
@@ -129,7 +129,7 @@ export default function AdminNotaCreate() {
   };
 
   const handleFinishClick = () => {
-    if (!note.customer_name || !note.customer_phone) { alert('Preencha nome e telefone do cliente'); return; }
+    if (!note.customer_name) { alert('Preencha o nome do cliente'); return; }
     if (note.items.length === 0) { alert('Adicione pelo menos um item'); return; }
     setShowConfirmModal(true);
   };

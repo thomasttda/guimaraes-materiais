@@ -160,8 +160,8 @@ app.put('/api/orders/:id', async (req, res) => {
 
 app.post('/api/deliveries', async (req, res) => {
   const { note_id, driver_id, customer_name, customer_phone, customer_address } = req.body;
-  if (!driver_id || !customer_name || !customer_phone) {
-    return res.status(400).json({ error: 'driver_id, customer_name e customer_phone são obrigatórios' });
+  if (!driver_id || !customer_name) {
+    return res.status(400).json({ error: 'driver_id e customer_name são obrigatórios' });
   }
   const driver = await queryOne('drivers', { where: [{ field: 'id', value: driver_id }] });
   if (!driver) return res.status(404).json({ error: 'Motorista não encontrado' });
@@ -171,7 +171,7 @@ app.post('/api/deliveries', async (req, res) => {
     driver_name: driver.name,
     driver_phone: driver.phone,
     customer_name,
-    customer_phone,
+    customer_phone: customer_phone || '',
     customer_address: customer_address || '',
     status: 'ready'
   });
