@@ -77,18 +77,17 @@ export default function AdminNotaView() {
     }
     if (buf.trim()) nParts.push(buf.trim());
 
-    const itemLines = items.map((item, i) => {
-      const seqS = (i + 1).toString().padStart(2, '0');
+    const itemLines = items.map((item) => {
       const name = item.name || '';
       const qty = item.quantity || 0;
       const un = (item.unit || 'UN').slice(0, 2);
       const pr = item.price || 0;
       const tt = pr * qty;
-      const nm = `${seqS} ${name.slice(0, 14)}`;
       const qS = String(qty).padStart(3);
       const pS = pr.toFixed(2).replace('.', ',');
       const tS = tt.toFixed(2).replace('.', ',');
-      return L(`${nm}${' '.repeat(Math.max(1, 17 - nm.length))}${qS} ${un} ${pS.padStart(7)} ${tS.padStart(9)}`);
+      const nameSlice = name.slice(0, 14);
+      return L(`${qS} ${un} ${nameSlice}${' '.repeat(Math.max(1, 15 - nameSlice.length))}${pS.padStart(7)} ${tS.padStart(9)}`);
     }).join('\n');
 
     const cpfTxt = note.customer_cpf ? `\n${L('CPF/CNPJ: ' + note.customer_cpf)}` : '';
@@ -134,7 +133,7 @@ ${L('CLIENTE: ' + (note.customer_name || '-'))}${cpfTxt}${addrTxt}
 ${sep}
 ${L('ITENS')}
 ${sep}
-${LR('ITEM  PRODUTO', 'QTD  UN  VLR UN.   TOTAL')}
+${LR('QTD  UN  ITEM', 'VLR UN.   TOTAL')}
 ${sep}
 ${itemLines}
 ${sep}
