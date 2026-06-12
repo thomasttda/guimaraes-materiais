@@ -193,7 +193,7 @@ export default function AdminProducts() {
                     });
                     const data = await res.json();
                     if (!res.ok) { alert(data.error || 'Erro ao atualizar'); return; }
-                    alert(`Estoque atualizado: ${data.updated} produto(s)`);
+                    alert(`Estoque atualizado: ${data.updated} produto(s)${data.notFound ? `, ${data.notFound} não encontrado(s)` : ''}`);
                     fetchProducts();
                   } catch { alert('Erro ao processar planilha'); }
                 };

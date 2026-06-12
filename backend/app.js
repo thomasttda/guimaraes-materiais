@@ -111,6 +111,33 @@ app.post('/api/products', async (req, res) => {
   res.status(201).json(data[0]);
 });
 
+app.put('/api/products/stock/bulk', async (req, res) => {
+  const { items } = req.body;
+  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida' });
+  let updated = 0;
+  let notFound = 0;
+  for (const item of items) {
+    if (!item.name && !item.id) continue;
+    const stock = parseInt(item.stock) || 0;
+    if (item.id) {
+      await update('products', { stock }, 'id', item.id);
+      updated++;
+    } else if (item.name) {
+      const nameClean = item.name.trim();
+      let existing = await queryOne('products', { where: [{ field: 'name', value: nameClean }] });
+      if (!existing) existing = await queryOne('products', { where: [{ field: 'name', op: 'ilike', value: nameClean }] });
+      if (!existing) existing = await queryOne('products', { where: [{ field: 'name', op: 'ilike', value: `%${nameClean}%` }] });
+      if (existing) {
+        await update('products', { stock }, 'id', existing.id);
+        updated++;
+      } else {
+        notFound++;
+      }
+    }
+  }
+  res.json({ updated, notFound, message: `${updated} produto(s) atualizado(s)${notFound ? `, ${notFound} não encontrado(s)` : ''}` });
+});
+
 app.put('/api/products/:id', async (req, res) => {
   const { name, description, price, unit, category, image, featured, stock, min_stock, supplier_id } = req.body;
   const data = await update('products', {
@@ -124,27 +151,6 @@ app.put('/api/products/:id', async (req, res) => {
 app.delete('/api/products/:id', async (req, res) => {
   await remove('products', 'id', req.params.id);
   res.json({ message: 'Produto removido com sucesso' });
-});
-
-app.put('/api/products/stock/bulk', async (req, res) => {
-  const { items } = req.body;
-  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida' });
-  let updated = 0;
-  for (const item of items) {
-    if (!item.name && !item.id) continue;
-    const stock = parseInt(item.stock) || 0;
-    if (item.id) {
-      await update('products', { stock }, 'id', item.id);
-      updated++;
-    } else if (item.name) {
-      const existing = await queryOne('products', { where: [{ field: 'name', value: item.name }] });
-      if (existing) {
-        await update('products', { stock }, 'id', existing.id);
-        updated++;
-      }
-    }
-  }
-  res.json({ updated, message: `${updated} produto(s) atualizado(s)` });
 });
 
 // ==================== QUOTES ====================
