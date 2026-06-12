@@ -148,20 +148,37 @@ app.post('/api/products/stock/bulk', async (req, res) => {
   }
 
   let updated = 0;
+  const updateErrors = [];
   const batchSize = 20;
   for (let i = 0; i < matches.length; i += batchSize) {
     const batch = matches.slice(i, i + batchSize);
     const results = await Promise.allSettled(batch.map(m => update('products', { stock: m.stock }, 'id', m.id)));
-    updated += results.filter(r => r.status === 'fulfilled').length;
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
+      if (r.status === 'fulfilled') {
+        updated++;
+      } else {
+        const msg = r.reason?.message || String(r.reason);
+        updateErrors.push({ name: batch[j].name, error: msg });
+        console.error('Stock update error:', batch[j].name, msg);
+      }
+    }
   }
 
   const debug = [
     ...matches.map(m => ({ name: m.name, stock: m.stock, status: 'ok' })),
+    ...updateErrors.map(e => ({ name: e.name, error: e.error, status: 'error' })),
     ...missing.map(n => ({ name: n, status: 'not_found' }))
   ];
 
-  res.json({ updated, notFound: missing.length, debug,
-    message: `${updated} atualizado(s)${missing.length ? `, ${missing.length} não encontrado(s) (${missing.join(', ')})` : ''}` });
+  res.json({ updated, notFound: missing.length, errors: updateErrors, debug,
+    message: `${updated} atualizado(s)${missing.length ? `, ${missing.length} não encontrado(s) (${missing.join(', ')})` : ''}${updateErrors.length ? `, ${updateErrors.length} erro(s)` : ''}` });
+});
+
+app.post('/api/products/stock/clear-all', async (req, res) => {
+  const { data, error } = await supabase.from('products').update({ stock: 0 }).neq('id', 0).select('id');
+  if (error) return res.status(500).json({ error: 'Erro ao zerar estoque', detail: error.message });
+  res.json({ updated: data.length, message: `${data.length} produto(s) com estoque zerado` });
 });
 
 app.put('/api/products/:id', async (req, res) => {

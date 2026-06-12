@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check, Download, Upload } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check, Download, Upload, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const API_URL = '/api';
@@ -178,6 +178,21 @@ export default function AdminProducts() {
             <button onClick={() => { stockItemsRef.current = []; setStockFile(null); setStockPreview([]); setStockValid(null); setStockResult(null); setShowStockModal(true); }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Atualizar Estoque
             </button>
+            <button onClick={async () => {
+              if (!confirm('Tem certeza que deseja ZERAR TODO O ESTOQUE? Essa ação não pode ser desfeita.')) return;
+              if (!confirm('CONFIRMA NOVAMENTE? Todos os produtos ficarão com estoque 0.')) return;
+              try {
+                const res = await fetch(`${API_URL}/products/stock/clear-all`, { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                alert(`${data.message}`);
+                fetchProducts();
+              } catch (err) {
+                alert('Erro ao zerar estoque: ' + err.message);
+              }
+            }} className="py-2 px-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1 text-sm">
+              <AlertTriangle className="w-4 h-4" /> Zerar Estoque
+            </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Tag className="w-4 h-4" /> Categorias
             </button>
@@ -296,7 +311,6 @@ export default function AdminProducts() {
                             if (!hasNome || !hasEstoque) {
                               setStockValid(false);
                               setStockPreview([]);
-                              setStockItems([]);
                               setStockFile(null);
                               return;
                             }
@@ -308,7 +322,7 @@ export default function AdminProducts() {
                             setStockFile(f);
                             setStockValid(true);
                             setStockPreview(items.slice(0, 10));
-                          } catch { setStockValid(false); setStockItems([]); }
+                          } catch { setStockValid(false); }
                         };
                         reader.readAsArrayBuffer(f);
                       };
