@@ -175,10 +175,10 @@ app.post('/api/products/stock/bulk', async (req, res) => {
     message: `${updated} atualizado(s)${missing.length ? `, ${missing.length} não encontrado(s) (${missing.join(', ')})` : ''}${updateErrors.length ? `, ${updateErrors.length} erro(s)` : ''}` });
 });
 
-app.post('/api/products/stock/clear-all', async (req, res) => {
-  const { data, error } = await supabase.from('products').update({ stock: 0 }).neq('id', 0).select('id');
-  if (error) return res.status(500).json({ error: 'Erro ao zerar estoque', detail: error.message });
-  res.json({ updated: data.length, message: `${data.length} produto(s) com estoque zerado` });
+app.post('/api/products/delete-all', async (req, res) => {
+  const { data, error } = await supabase.from('products').delete().neq('id', 0).select('id');
+  if (error) return res.status(500).json({ error: 'Erro ao excluir produtos', detail: error.message });
+  res.json({ deleted: data.length, message: `${data.length} produto(s) excluídos` });
 });
 
 app.put('/api/products/:id', async (req, res) => {

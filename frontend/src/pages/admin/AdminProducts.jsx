@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check, Download, Upload, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check, Download, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const API_URL = '/api';
@@ -179,19 +179,19 @@ export default function AdminProducts() {
               <Upload className="w-4 h-4" /> Atualizar Estoque
             </button>
             <button onClick={async () => {
-              if (!confirm('Tem certeza que deseja ZERAR TODO O ESTOQUE? Essa ação não pode ser desfeita.')) return;
-              if (!confirm('CONFIRMA NOVAMENTE? Todos os produtos ficarão com estoque 0.')) return;
+              if (!confirm('Tem certeza que deseja EXCLUIR TODOS OS PRODUTOS? Essa ação não pode ser desfeita.')) return;
+              if (!confirm('CONFIRMA NOVAMENTE? Todos os produtos serão permanentemente removidos.')) return;
               try {
-                const res = await fetch(`${API_URL}/products/stock/clear-all`, { method: 'POST' });
+                const res = await fetch(`${API_URL}/products/delete-all`, { method: 'POST' });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error);
                 alert(`${data.message}`);
                 fetchProducts();
               } catch (err) {
-                alert('Erro ao zerar estoque: ' + err.message);
+                alert('Erro ao excluir: ' + err.message);
               }
             }} className="py-2 px-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1 text-sm">
-              <AlertTriangle className="w-4 h-4" /> Zerar Estoque
+              <Trash2 className="w-4 h-4" /> Excluir Todos
             </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Tag className="w-4 h-4" /> Categorias
