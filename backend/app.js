@@ -113,16 +113,22 @@ app.post('/api/products', async (req, res) => {
 
 app.post('/api/products/bulk-import', async (req, res) => {
   const { products } = req.body;
-  if (!products || !Array.isArray(products)) return res.status(400).json({ error: 'Lista de produtos inválida' });
+  if (!products || !Array.isArray(products)) return res.status(400).json({ error: 'Lista de produtos inválida', received: typeof products });
   if (products.length === 0) return res.json({ created: 0, message: 'Nenhum produto' });
   const values = products.map(p => ({
-    name: p.name, description: p.description || '', price: p.price || 0,
+    name: p.name, description: p.description || '', price: parseFloat(p.price) || 0,
     unit: p.unit || 'UND', category: p.category || '', image: p.image || '',
-    featured: p.featured ? 1 : 0, stock: p.stock || 0, min_stock: p.min_stock || 10
+    featured: p.featured ? 1 : 0, stock: parseInt(p.stock) || 0, min_stock: parseInt(p.min_stock) || 10
   }));
-  const { data, error } = await supabase.from('products').insert(values).select();
-  if (error) return res.status(500).json({ error: 'Erro ao importar', detail: error.message });
-  res.json({ created: data.length, message: `${data.length} produto(s) criados` });
+  console.log('Bulk import:', values.length, 'products, first:', values[0]?.name);
+  try {
+    const { data, error } = await supabase.from('products').insert(values).select();
+    if (error) return res.status(500).json({ error: 'Erro ao importar', detail: error.message, code: error.code });
+    res.json({ created: data.length, message: `${data.length} produto(s) criados` });
+  } catch (e) {
+    console.error('Bulk import exception:', e.message || e);
+    return res.status(500).json({ error: 'Erro ao importar', detail: e.message || 'Unknown' });
+  }
 });
 
 app.post('/api/products/stock/bulk', async (req, res) => {

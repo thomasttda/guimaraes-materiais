@@ -149,7 +149,7 @@ export default function AdminProducts() {
             body: JSON.stringify({ products })
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Erro ao importar');
+          if (!res.ok) throw new Error(data.detail || data.error || `HTTP ${res.status}`);
           alert(data.message);
           fetchProducts();
         } catch (err) { alert('Erro ao importar: ' + err.message); }
