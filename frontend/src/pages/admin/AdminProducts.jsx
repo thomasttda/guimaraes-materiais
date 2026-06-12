@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check, Download, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const API_URL = '/api';
 
@@ -89,6 +90,64 @@ export default function AdminProducts() {
     setShowForm(false);
   };
 
+  const handleExport = () => {
+    const data = products.map((p, i) => ({
+      '#': i + 1,
+      Nome: p.name,
+      Descricao: p.description || '',
+      Preco: p.price,
+      Unidade: p.unit,
+      Categoria: p.category,
+      Estoque: p.stock,
+      Destaque: p.featured ? 'Sim' : 'Nao'
+    }));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, 'Produtos');
+    XLSX.writeFile(wb, 'produtos.xlsx');
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const wb = XLSX.read(ev.target.result, { type: 'binary' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws);
+          let count = 0;
+          for (const row of rows) {
+            const name = (row['Nome'] || '').trim();
+            if (!name) continue;
+            const payload = {
+              name,
+              description: (row['Descricao'] || '').trim(),
+              price: parseFloat(row['Preco']) || 0,
+              unit: (row['Unidade'] || 'UND').trim(),
+              category: (row['Categoria'] || '').trim(),
+              stock: parseInt(row['Estoque']) || 0
+            };
+            await fetch(`${API_URL}/products`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            count++;
+          }
+          alert(`${count} produto(s) importado(s) com sucesso!`);
+          fetchProducts();
+        } catch { alert('Erro ao importar planilha'); }
+      };
+      reader.readAsBinaryString(file);
+    };
+    input.click();
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-white shadow-sm border-b">
@@ -98,6 +157,12 @@ export default function AdminProducts() {
             <h1 className="font-bold text-gray-800">Gerenciar Produtos</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={handleExport} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
+              <Download className="w-4 h-4" /> Exportar
+            </button>
+            <button onClick={handleImport} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
+              <Upload className="w-4 h-4" /> Importar
+            </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Tag className="w-4 h-4" /> Categorias
             </button>
