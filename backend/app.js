@@ -1331,6 +1331,65 @@ app.get('/api/check-reminders', async (req, res) => {
   res.json({ remindersCreated, lowStockAlerts });
 });
 
+// ==================== FINANCEIRO / RELATÓRIO DIÁRIO ====================
+
+const todayRange = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+  return { start, end };
+};
+
+app.get('/api/financeiro/resumo', async (req, res) => {
+  const { start, end } = todayRange();
+  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['confirmed', 'sent', 'completed']);
+  const vendas = notas || [];
+  const total = vendas.reduce((s, n) => s + parseFloat(n.total || 0), 0);
+  const porPagamento = {};
+  const porVendedor = {};
+  for (const n of vendas) {
+    const pm = n.payment_method || 'Sem forma';
+    porPagamento[pm] = (porPagamento[pm] || 0) + parseFloat(n.total || 0);
+    const vendedor = n.attendant_name || 'Sem vendedor';
+    porVendedor[vendedor] = (porVendedor[vendedor] || 0) + parseFloat(n.total || 0);
+  }
+  const { data: sangrias } = await supabase.from('cash_flow').select('*').gte('created_at', start).lt('created_at', end).eq('category', 'sangria');
+  const totalSangrias = (sangrias || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const { data: fechamento } = await supabase.from('app_settings').select('value').eq('key', `fechamento_${start.slice(0, 10)}`).single();
+  res.json({ total, porPagamento, porVendedor, sangrias: sangrias || [], totalSangrias, fechado: !!fechamento });
+});
+
+app.post('/api/financeiro/sangria', async (req, res) => {
+  const { amount, reason } = req.body;
+  if (!amount || amount <= 0) return res.status(400).json({ error: 'Valor inválido' });
+  const data = await insert('cash_flow', { type: 'expense', category: 'sangria', description: reason || 'Sangria', amount: parseFloat(amount), payment_method: 'cash' });
+  res.status(201).json(data[0]);
+});
+
+app.post('/api/financeiro/fechar-dia', async (req, res) => {
+  const { start, end } = todayRange();
+  const key = `fechamento_${start.slice(0, 10)}`;
+  const existing = await queryOne('app_settings', { where: [{ field: 'key', value: key }] });
+  if (existing) return res.status(400).json({ error: 'Dia já foi fechado' });
+  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['confirmed', 'sent', 'completed']);
+  const vendas = notas || [];
+  const total = vendas.reduce((s, n) => s + parseFloat(n.total || 0), 0);
+  const porPagamento = {};
+  const porVendedor = {};
+  for (const n of vendas) {
+    const pm = n.payment_method || 'Sem forma';
+    porPagamento[pm] = (porPagamento[pm] || 0) + parseFloat(n.total || 0);
+    const vendedor = n.attendant_name || 'Sem vendedor';
+    porVendedor[vendedor] = (porVendedor[vendedor] || 0) + parseFloat(n.total || 0);
+  }
+  const { data: sangrias } = await supabase.from('cash_flow').select('*').gte('created_at', start).lt('created_at', end).eq('category', 'sangria');
+  const totalSangrias = (sangrias || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const saldoFinal = total - totalSangrias;
+  const valor = JSON.stringify({ data: start.slice(0, 10), total, porPagamento, porVendedor, sangrias: sangrias || [], totalSangrias, saldoFinal, fechadoEm: new Date().toISOString() });
+  await supabase.from('app_settings').insert({ key, value: valor }).select();
+  res.json({ message: 'Dia fechado com sucesso', total, saldoFinal });
+});
+
 // ==================== START ====================
 
 module.exports = app;
