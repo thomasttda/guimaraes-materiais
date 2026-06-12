@@ -334,7 +334,7 @@ export default function AdminProducts() {
                     {stockValid === true && (
                       <>
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
-                          Documento válido! {stockPreview.length} produto(s) lidos.
+                          Documento válido! {stockItems.length} produto(s) lidos.
                         </div>
                         {stockPreview.length > 0 && (
                           <div className="bg-gray-50 rounded-lg p-3 text-xs">
