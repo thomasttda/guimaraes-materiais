@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Edit2, Trash2, ArrowLeft, Search, X, Tag, Check, Download, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -17,7 +17,7 @@ export default function AdminProducts() {
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockFile, setStockFile] = useState(null);
   const [stockPreview, setStockPreview] = useState([]);
-  const [stockItems, setStockItems] = useState([]);
+  const stockItemsRef = useRef([]);
   const [stockValid, setStockValid] = useState(null);
   const [stockSending, setStockSending] = useState(false);
   const [stockResult, setStockResult] = useState(null);
@@ -175,7 +175,7 @@ export default function AdminProducts() {
             <button onClick={handleImport} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Importar
             </button>
-            <button onClick={() => { setStockFile(null); setStockPreview([]); setStockItems([]); setStockValid(null); setStockResult(null); setShowStockModal(true); }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
+            <button onClick={() => { stockItemsRef.current = []; setStockFile(null); setStockPreview([]); setStockValid(null); setStockResult(null); setShowStockModal(true); }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Atualizar Estoque
             </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
@@ -304,8 +304,8 @@ export default function AdminProducts() {
                               name: String(r['Nome'] || r['nome'] || '').trim(),
                               stock: parseInt(r['Estoque'] || r['estoque'] || 0) || 0
                             })).filter(i => i.name);
+                            stockItemsRef.current = items;
                             setStockFile(f);
-                            setStockItems(items);
                             setStockValid(true);
                             setStockPreview(items.slice(0, 10));
                           } catch { setStockValid(false); setStockItems([]); }
@@ -334,7 +334,7 @@ export default function AdminProducts() {
                     {stockValid === true && (
                       <>
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
-                          Documento válido! {stockItems.length} produto(s) lidos.
+                          Documento válido! {stockPreview.length} produto(s) lidos. {stockItemsRef.current.length > 10 && <span className="text-xs">(mostrando 10 de {stockItemsRef.current.length})</span>}
                         </div>
                         {stockPreview.length > 0 && (
                           <div className="bg-gray-50 rounded-lg p-3 text-xs">
@@ -352,12 +352,12 @@ export default function AdminProducts() {
                     <button disabled={!stockValid || stockSending} onClick={async () => {
                       setStockSending(true);
                       const controller = new AbortController();
-                      const timer = setTimeout(() => controller.abort(), 30000);
+                      const timer = setTimeout(() => controller.abort(), 120000);
                       try {
                         const res = await fetch(`${API_URL}/products/stock/bulk`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ items: stockItems }),
+                          body: JSON.stringify({ items: stockItemsRef.current }),
                           signal: controller.signal
                         });
                         clearTimeout(timer);
@@ -366,7 +366,7 @@ export default function AdminProducts() {
                         setStockResult(data);
                         fetchProducts();
                       } catch (err) {
-                        setStockResult({ error: true, message: err.name === 'AbortError' ? 'Tempo excedido (30s) — verifique se o backend está online' : err.message || 'Erro ao enviar' });
+                        setStockResult({ error: true, message: err.name === 'AbortError' ? 'Tempo excedido (120s) — verifique se o backend está online' : err.message || 'Erro ao enviar' });
                       }
                       setStockSending(false);
                     }} className={`w-full py-3 rounded-xl font-medium text-white ${stockValid && !stockSending ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-300 cursor-not-allowed'}`}>

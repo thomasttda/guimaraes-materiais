@@ -113,8 +113,55 @@ app.post('/api/products', async (req, res) => {
 
 app.post('/api/products/stock/bulk', async (req, res) => {
   const { items } = req.body;
-  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida', received: typeof items, bodyType: typeof req.body, bodyIsArray: Array.isArray(req.body), contentType: req.headers['content-type'], bodyLength: req.body ? JSON.stringify(req.body).length : 0 });
-  res.json({ updated: 0, notFound: 0, debug: items.map(i => ({ name: i.name, stock: i.stock, status: i.name ? 'will_process' : 'no_name' })), message: `${items.length} produto(s) recebidos (debug)` });
+  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida', received: typeof items });
+  if (items.length === 0) return res.json({ updated: 0, notFound: 0, message: 'Nenhum produto na lista' });
+
+  const { data: allProducts, error } = await supabase.from('products').select('id, name');
+  if (error) return res.status(500).json({ error: 'Erro ao buscar produtos' });
+
+  const byExact = {}; const byLower = {};
+  for (const p of allProducts) {
+    byExact[p.name] = p;
+    const k = p.name.toLowerCase();
+    if (!byLower[k]) byLower[k] = [];
+    byLower[k].push(p);
+  }
+
+  const matches = [];
+  const missing = [];
+
+  for (const item of items) {
+    if (!item.name) continue;
+    const name = item.name.trim();
+    const stock = parseInt(item.stock) || 0;
+    let found = byExact[name] || (byLower[name.toLowerCase()]?.[0]);
+    if (!found) {
+      const l = name.toLowerCase();
+      found = allProducts.find(p => p.name.toLowerCase().includes(l));
+    }
+    if (!found) {
+      const ns = name.replace(/\s+/g, '').toLowerCase();
+      found = allProducts.find(p => p.name.toLowerCase().replace(/\s+/g, '').includes(ns));
+    }
+    if (found) matches.push({ id: found.id, name: found.name, stock });
+    else missing.push(name);
+  }
+
+  let updated = 0;
+  const batchSize = 20;
+  for (let i = 0; i < matches.length; i += batchSize) {
+    const batch = matches.slice(i, i + batchSize);
+    const results = await Promise.allSettled(batch.map(m => update('products', { stock: m.stock }, 'id', m.id)));
+    updated += results.filter(r => r.status === 'fulfilled').length;
+  }
+
+  const debug = [
+    ...matches.map(m => ({ name: m.name, stock: m.stock, status: 'ok' })),
+    ...missing.map(n => ({ name: n, status: 'not_found' }))
+  ];
+
+  res.json({ updated, notFound: missing.length, debug,
+    message: `${updated} atualizado(s)${missing.length ? `, ${missing.length} não encontrado(s) (${missing.join(', ')})` : ''}` });
 });
 
 app.put('/api/products/:id', async (req, res) => {
