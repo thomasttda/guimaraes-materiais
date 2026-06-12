@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'guimaraes-jwt-secret-2026';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 // Global error handler
 app.use((err, req, res, next) => {
