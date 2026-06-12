@@ -187,13 +187,14 @@ export default function AdminProducts() {
                     })).filter(i => i.name);
                     if (items.length === 0) { alert('Nenhum produto encontrado na planilha'); return; }
                     const res = await fetch(`${API_URL}/products/stock/bulk`, {
-                      method: 'PUT',
+                      method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ items })
                     });
                     const data = await res.json();
                     if (!res.ok) { alert(data.error || 'Erro ao atualizar'); return; }
-                    alert(`Estoque atualizado: ${data.updated} produto(s)${data.notFound ? `, ${data.notFound} não encontrado(s)` : ''}`);
+                    const nf = data.debug?.filter(d => d.status === 'not_found').map(d => d.name).join(', ');
+                    alert(`Estoque atualizado: ${data.updated} produto(s)${data.notFound ? `, ${data.notFound} não encontrado(s): ${nf}` : ''}`);
                     fetchProducts();
                   } catch { alert('Erro ao processar planilha'); }
                 };
