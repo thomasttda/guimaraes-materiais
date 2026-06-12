@@ -111,12 +111,26 @@ app.post('/api/products', async (req, res) => {
   res.status(201).json(data[0]);
 });
 
-app.post('/api/products/stock/bulk', async (req, res) => {
-  const { items } = req.body;
-  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida', received: typeof items });
-  if (items.length === 0) return res.json({ updated: 0, notFound: 0, message: 'Nenhum produto na lista' });
+app.post('/api/products/bulk-import', async (req, res) => {
+  const { products } = req.body;
+  if (!products || !Array.isArray(products)) return res.status(400).json({ error: 'Lista de produtos inválida' });
+  if (products.length === 0) return res.json({ created: 0, message: 'Nenhum produto' });
+  const values = products.map(p => ({
+    name: p.name, description: p.description || '', price: p.price || 0,
+    unit: p.unit || 'UND', category: p.category || '', image: p.image || '',
+    featured: p.featured ? 1 : 0, stock: p.stock || 0, min_stock: p.min_stock || 10
+  }));
+  const { data, error } = await supabase.from('products').insert(values).select();
+  if (error) return res.status(500).json({ error: 'Erro ao importar', detail: error.message });
+  res.json({ created: data.length, message: `${data.length} produto(s) criados` });
+});
 
-  const { data: allProducts, error } = await supabase.from('products').select('id, name');
+app.post('/api/products/stock/bulk', async (req, res) => {
+  const { items, createMissing } = req.body;
+  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida', received: typeof items });
+  if (items.length === 0) return res.json({ updated: 0, notFound: 0, created: 0, message: 'Nenhum produto na lista' });
+
+  const { data: allProducts, error } = await supabase.from('products').select('id, name, unit, category, price');
   if (error) return res.status(500).json({ error: 'Erro ao buscar produtos' });
 
   const byExact = {}; const byLower = {};
@@ -127,7 +141,8 @@ app.post('/api/products/stock/bulk', async (req, res) => {
     byLower[k].push(p);
   }
 
-  const matches = [];
+  const toUpdate = [];
+  const toCreate = [];
   const missing = [];
 
   for (const item of items) {
@@ -143,36 +158,62 @@ app.post('/api/products/stock/bulk', async (req, res) => {
       const ns = name.replace(/\s+/g, '').toLowerCase();
       found = allProducts.find(p => p.name.toLowerCase().replace(/\s+/g, '').includes(ns));
     }
-    if (found) matches.push({ id: found.id, name: found.name, stock });
-    else missing.push(name);
+    if (found) {
+      toUpdate.push({ id: found.id, name: found.name, stock });
+    } else if (createMissing) {
+      toCreate.push({ name, stock, unit: item.unit || 'UND', category: item.category || '', price: item.price || 0 });
+    } else {
+      missing.push(name);
+    }
   }
 
   let updated = 0;
   const updateErrors = [];
   const batchSize = 20;
-  for (let i = 0; i < matches.length; i += batchSize) {
-    const batch = matches.slice(i, i + batchSize);
+  for (let i = 0; i < toUpdate.length; i += batchSize) {
+    const batch = toUpdate.slice(i, i + batchSize);
     const results = await Promise.allSettled(batch.map(m => update('products', { stock: m.stock }, 'id', m.id)));
     for (let j = 0; j < results.length; j++) {
       const r = results[j];
-      if (r.status === 'fulfilled') {
-        updated++;
-      } else {
+      if (r.status === 'fulfilled') updated++;
+      else {
         const msg = r.reason?.message || String(r.reason);
         updateErrors.push({ name: batch[j].name, error: msg });
-        console.error('Stock update error:', batch[j].name, msg);
       }
     }
   }
 
+  let created = 0;
+  const createErrors = [];
+  if (toCreate.length > 0) {
+    for (let i = 0; i < toCreate.length; i += batchSize) {
+      const batch = toCreate.slice(i, i + batchSize);
+      const values = batch.map(p => ({
+        name: p.name, stock: p.stock, unit: p.unit, category: p.category,
+        price: p.price, description: '', image: '', featured: 0, min_stock: 10
+      }));
+      const { data, error: insErr } = await supabase.from('products').insert(values).select();
+      if (insErr) createErrors.push(insErr.message);
+      else created += data.length;
+    }
+  }
+
   const debug = [
-    ...matches.map(m => ({ name: m.name, stock: m.stock, status: 'ok' })),
+    ...toUpdate.map(m => ({ name: m.name, stock: m.stock, status: 'updated' })),
+    ...toCreate.map(m => ({ name: m.name, stock: m.stock, status: 'created' })),
     ...updateErrors.map(e => ({ name: e.name, error: e.error, status: 'error' })),
+    ...createErrors.map(e => ({ error: e, status: 'create_error' })),
     ...missing.map(n => ({ name: n, status: 'not_found' }))
   ];
 
-  res.json({ updated, notFound: missing.length, errors: updateErrors, debug,
-    message: `${updated} atualizado(s)${missing.length ? `, ${missing.length} não encontrado(s) (${missing.join(', ')})` : ''}${updateErrors.length ? `, ${updateErrors.length} erro(s)` : ''}` });
+  const parts = [];
+  if (updated > 0) parts.push(`${updated} atualizado(s)`);
+  if (created > 0) parts.push(`${created} criado(s)`);
+  if (missing.length > 0) parts.push(`${missing.length} não encontrado(s)`);
+  if (updateErrors.length > 0) parts.push(`${updateErrors.length} erro(s)`);
+
+  res.json({ updated, created, notFound: missing.length, errors: updateErrors, createErrors, debug,
+    message: parts.join(', ') || 'Nenhuma alteração' });
 });
 
 app.post('/api/products/delete-all', async (req, res) => {

@@ -21,6 +21,7 @@ export default function AdminProducts() {
   const [stockValid, setStockValid] = useState(null);
   const [stockSending, setStockSending] = useState(false);
   const [stockResult, setStockResult] = useState(null);
+  const [stockCreateMissing, setStockCreateMissing] = useState(false);
   const [form, setForm] = useState({
     name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0,
   });
@@ -127,14 +128,12 @@ export default function AdminProducts() {
           const wb = XLSX.read(ev.target.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(ws);
-          let count = 0;
-          let errors = 0;
-          for (const row of rows) {
+          const products = rows.map(row => {
             const name = (row['Nome'] || row['nome'] || '').toString().trim();
-            if (!name) continue;
+            if (!name) return null;
             let price = parseFloat(row['Preco'] || row['preco'] || 0);
             if (isNaN(price)) price = 0;
-            const payload = {
+            return {
               name,
               description: (row['Descricao'] || row['descricao'] || '').toString().trim(),
               price,
@@ -142,18 +141,18 @@ export default function AdminProducts() {
               category: (row['Categoria'] || row['categoria'] || '').toString().trim(),
               stock: parseInt(row['Estoque'] || row['estoque'] || 0) || 0
             };
-            try {
-              const res = await fetch(`${API_URL}/products`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              });
-              if (res.ok) count++; else errors++;
-            } catch { errors++; }
-          }
-          alert(`${count} produto(s) importado(s)${errors ? `, ${errors} erro(s)` : ''}!`);
+          }).filter(Boolean);
+          if (products.length === 0) { alert('Nenhum produto válido na planilha'); return; }
+          const res = await fetch(`${API_URL}/products/bulk-import`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ products })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Erro ao importar');
+          alert(data.message);
           fetchProducts();
-        } catch (err) { alert('Erro ao importar planilha: ' + err.message); }
+        } catch (err) { alert('Erro ao importar: ' + err.message); }
       };
       reader.readAsArrayBuffer(file);
     };
@@ -350,6 +349,10 @@ export default function AdminProducts() {
                         <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
                           Documento válido! {stockPreview.length} produto(s) lidos. {stockItemsRef.current.length > 10 && <span className="text-xs">(mostrando 10 de {stockItemsRef.current.length})</span>}
                         </div>
+                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                          <input type="checkbox" checked={stockCreateMissing} onChange={e => setStockCreateMissing(e.target.checked)} className="rounded border-gray-300" />
+                          Criar produtos não encontrados
+                        </label>
                         {stockPreview.length > 0 && (
                           <div className="bg-gray-50 rounded-lg p-3 text-xs">
                             <p className="font-medium text-gray-600 mb-2">Amostra (primeiros {stockPreview.length}):</p>
@@ -371,7 +374,7 @@ export default function AdminProducts() {
                         const res = await fetch(`${API_URL}/products/stock/bulk`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ items: stockItemsRef.current }),
+                          body: JSON.stringify({ items: stockItemsRef.current, createMissing: stockCreateMissing }),
                           signal: controller.signal
                         });
                         clearTimeout(timer);
@@ -403,9 +406,10 @@ export default function AdminProducts() {
                         </div>
                         <h3 className="font-bold text-lg mb-2">Atualização Concluída!</h3>
                         <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-2">
-                          <div className="flex justify-between"><span>Atualizados:</span><span className="font-bold text-green-600">{stockResult.updated}</span></div>
-                          <div className="flex justify-between"><span>Não encontrados:</span><span className="font-bold text-orange-600">{stockResult.notFound || 0}</span></div>
-                          <div className="flex justify-between"><span>Total na planilha:</span><span className="font-bold">{(stockResult.updated || 0) + (stockResult.notFound || 0)}</span></div>
+                  <div className="flex justify-between"><span>Atualizados:</span><span className="font-bold text-green-600">{stockResult.updated}</span></div>
+                  {stockResult.created !== undefined && <div className="flex justify-between"><span>Criados:</span><span className="font-bold text-blue-600">{stockResult.created}</span></div>}
+                  <div className="flex justify-between"><span>Não encontrados:</span><span className="font-bold text-orange-600">{stockResult.notFound || 0}</span></div>
+                  <div className="flex justify-between"><span>Total na planilha:</span><span className="font-bold">{(stockResult.updated || 0) + (stockResult.created || 0) + (stockResult.notFound || 0)}</span></div>
                         </div>
                         {stockResult.notFound > 0 && (
                           <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs text-left text-orange-700 max-h-24 overflow-y-auto">
