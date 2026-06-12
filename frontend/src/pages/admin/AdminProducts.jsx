@@ -14,6 +14,12 @@ export default function AdminProducts() {
   const [showCatModal, setShowCatModal] = useState(false);
   const [catForm, setCatForm] = useState({ name: '', editName: null });
   const [catRefresh, setCatRefresh] = useState(0);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [stockFile, setStockFile] = useState(null);
+  const [stockPreview, setStockPreview] = useState([]);
+  const [stockValid, setStockValid] = useState(null);
+  const [stockSending, setStockSending] = useState(false);
+  const [stockResult, setStockResult] = useState(null);
   const [form, setForm] = useState({
     name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0,
   });
@@ -168,40 +174,7 @@ export default function AdminProducts() {
             <button onClick={handleImport} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Importar
             </button>
-            <button onClick={async () => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = '.xlsx,.xls';
-              input.onchange = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                  try {
-                    const wb = XLSX.read(ev.target.result, { type: 'array' });
-                    const ws = wb.Sheets[wb.SheetNames[0]];
-                    const rows = XLSX.utils.sheet_to_json(ws);
-                    const items = rows.map(r => ({
-                      name: (r['Nome'] || r['nome'] || '').toString().trim(),
-                      stock: parseInt(r['Estoque'] || r['estoque'] || 0) || 0
-                    })).filter(i => i.name);
-                    if (items.length === 0) { alert('Nenhum produto encontrado na planilha'); return; }
-                    const res = await fetch(`${API_URL}/products/stock/bulk`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ items })
-                    });
-                    const data = await res.json();
-                    if (!res.ok) { alert(data.error || 'Erro ao atualizar'); return; }
-                    const nf = data.debug?.filter(d => d.status === 'not_found').map(d => d.name).join(', ');
-                    alert(`Estoque atualizado: ${data.updated} produto(s)${data.notFound ? `, ${data.notFound} não encontrado(s): ${nf}` : ''}`);
-                    fetchProducts();
-                  } catch { alert('Erro ao processar planilha'); }
-                };
-                reader.readAsArrayBuffer(file);
-              };
-              input.click();
-            }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
+            <button onClick={() => { setStockFile(null); setStockPreview([]); setStockValid(null); setStockResult(null); setShowStockModal(true); }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Atualizar Estoque
             </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
@@ -288,6 +261,150 @@ export default function AdminProducts() {
                   <button type="submit" className="flex-1 btn-primary">{editing ? 'Salvar' : 'Criar'}</button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Stock Update Modal */}
+        {showStockModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden">
+              <div className="p-6 border-b flex items-center justify-between">
+                <h2 className="text-xl font-bold">Atualizar Estoque</h2>
+                <button onClick={() => setShowStockModal(false)}><X className="w-6 h-6 text-gray-400" /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                {!stockResult ? (
+                  <>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:bg-gray-50" onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.xlsx,.xls';
+                      input.onchange = (e) => {
+                        const f = e.target.files[0];
+                        if (!f) return;
+                        setStockFile(f);
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          try {
+                            const wb = XLSX.read(ev.target.result, { type: 'array' });
+                            const ws = wb.Sheets[wb.SheetNames[0]];
+                            const rows = XLSX.utils.sheet_to_json(ws);
+                            const cols = rows.length > 0 ? Object.keys(rows[0]) : [];
+                            const hasNome = cols.some(c => /nome/i.test(c));
+                            const hasEstoque = cols.some(c => /estoque/i.test(c));
+                            if (!hasNome || !hasEstoque) {
+                              setStockValid(false);
+                              setStockPreview([]);
+                              return;
+                            }
+                            setStockValid(true);
+                            setStockPreview(rows.map(r => ({
+                              name: String(r['Nome'] || r['nome'] || '').trim(),
+                              stock: parseInt(r['Estoque'] || r['estoque'] || 0) || 0
+                            })).filter(i => i.name).slice(0, 10));
+                          } catch { setStockValid(false); }
+                        };
+                        reader.readAsArrayBuffer(f);
+                      };
+                      input.click();
+                    }}>
+                      {stockFile ? (
+                        <p className="font-medium text-primary-600">{stockFile.name}</p>
+                      ) : (
+                        <div className="text-gray-400">
+                          <Upload className="w-10 h-10 mx-auto mb-2" />
+                          <p>Clique para selecionar planilha</p>
+                          <p className="text-xs mt-1">Formatos: .xlsx, .xls</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {stockValid === false && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                        Documento inválido — necessário colunas "Nome" e "Estoque".
+                      </div>
+                    )}
+
+                    {stockValid === true && (
+                      <>
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                          Documento válido! {stockPreview.length} produto(s) lidos.
+                        </div>
+                        {stockPreview.length > 0 && (
+                          <div className="bg-gray-50 rounded-lg p-3 text-xs">
+                            <p className="font-medium text-gray-600 mb-2">Amostra (primeiros {stockPreview.length}):</p>
+                            {stockPreview.map((p, i) => (
+                              <div key={i} className="flex justify-between py-1 border-b border-gray-200 last:border-0">
+                                <span>{p.name}</span><span className="font-bold">{p.stock}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    <button disabled={!stockValid || stockSending} onClick={async () => {
+                      setStockSending(true);
+                      try {
+                        const reader = new FileReader();
+                        reader.onload = async (ev) => {
+                          try {
+                            const wb = XLSX.read(ev.target.result, { type: 'array' });
+                            const ws = wb.Sheets[wb.SheetNames[0]];
+                            const rows = XLSX.utils.sheet_to_json(ws);
+                            const items = rows.map(r => ({
+                              name: String(r['Nome'] || r['nome'] || '').trim(),
+                              stock: parseInt(r['Estoque'] || r['estoque'] || 0) || 0
+                            })).filter(i => i.name);
+                            const res = await fetch(`${API_URL}/products/stock/bulk`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ items })
+                            });
+                            const data = await res.json();
+                            setStockResult(data);
+                            fetchProducts();
+                          } catch { setStockResult({ error: true, message: 'Erro ao processar' }); }
+                          setStockSending(false);
+                        };
+                        reader.readAsArrayBuffer(stockFile);
+                      } catch { setStockSending(false); setStockResult({ error: true, message: 'Erro ao enviar' }); }
+                    }} className={`w-full py-3 rounded-xl font-medium text-white ${stockValid && !stockSending ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-300 cursor-not-allowed'}`}>
+                      {stockSending ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                          Enviando...
+                        </span>
+                      ) : 'Enviar'}
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    {stockResult.error ? (
+                      <div className="text-red-600 font-medium mb-4">{stockResult.message || 'Erro ao atualizar estoque'}</div>
+                    ) : (
+                      <>
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <h3 className="font-bold text-lg mb-2">Atualização Concluída!</h3>
+                        <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-2">
+                          <div className="flex justify-between"><span>Atualizados:</span><span className="font-bold text-green-600">{stockResult.updated}</span></div>
+                          <div className="flex justify-between"><span>Não encontrados:</span><span className="font-bold text-orange-600">{stockResult.notFound || 0}</span></div>
+                          <div className="flex justify-between"><span>Total na planilha:</span><span className="font-bold">{(stockResult.updated || 0) + (stockResult.notFound || 0)}</span></div>
+                        </div>
+                        {stockResult.notFound > 0 && (
+                          <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs text-left text-orange-700 max-h-24 overflow-y-auto">
+                            {stockResult.debug?.filter(d => d.status === 'not_found').map(d => <div key={d.name}>✕ {d.name}</div>)}
+                          </div>
+                        )}
+                        <button onClick={() => { setShowStockModal(false); setStockResult(null); }} className="w-full mt-4 py-3 bg-primary-500 text-white rounded-xl hover:bg-primary-600 font-medium">Fechar</button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
