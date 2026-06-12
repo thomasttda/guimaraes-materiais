@@ -17,6 +17,7 @@ export default function AdminProducts() {
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockFile, setStockFile] = useState(null);
   const [stockPreview, setStockPreview] = useState([]);
+  const [stockItems, setStockItems] = useState([]);
   const [stockValid, setStockValid] = useState(null);
   const [stockSending, setStockSending] = useState(false);
   const [stockResult, setStockResult] = useState(null);
@@ -174,7 +175,7 @@ export default function AdminProducts() {
             <button onClick={handleImport} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Importar
             </button>
-            <button onClick={() => { setStockFile(null); setStockPreview([]); setStockValid(null); setStockResult(null); setShowStockModal(true); }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
+            <button onClick={() => { setStockFile(null); setStockPreview([]); setStockItems([]); setStockValid(null); setStockResult(null); setShowStockModal(true); }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Atualizar Estoque
             </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
@@ -283,7 +284,6 @@ export default function AdminProducts() {
                       input.onchange = (e) => {
                         const f = e.target.files[0];
                         if (!f) return;
-                        setStockFile(f);
                         const reader = new FileReader();
                         reader.onload = (ev) => {
                           try {
@@ -296,14 +296,19 @@ export default function AdminProducts() {
                             if (!hasNome || !hasEstoque) {
                               setStockValid(false);
                               setStockPreview([]);
+                              setStockItems([]);
+                              setStockFile(null);
                               return;
                             }
-                            setStockValid(true);
-                            setStockPreview(rows.map(r => ({
+                            const items = rows.map(r => ({
                               name: String(r['Nome'] || r['nome'] || '').trim(),
                               stock: parseInt(r['Estoque'] || r['estoque'] || 0) || 0
-                            })).filter(i => i.name).slice(0, 10));
-                          } catch { setStockValid(false); }
+                            })).filter(i => i.name);
+                            setStockFile(f);
+                            setStockItems(items);
+                            setStockValid(true);
+                            setStockPreview(items.slice(0, 10));
+                          } catch { setStockValid(false); setStockItems([]); }
                         };
                         reader.readAsArrayBuffer(f);
                       };
@@ -347,29 +352,16 @@ export default function AdminProducts() {
                     <button disabled={!stockValid || stockSending} onClick={async () => {
                       setStockSending(true);
                       try {
-                        const reader = new FileReader();
-                        reader.onload = async (ev) => {
-                          try {
-                            const wb = XLSX.read(ev.target.result, { type: 'array' });
-                            const ws = wb.Sheets[wb.SheetNames[0]];
-                            const rows = XLSX.utils.sheet_to_json(ws);
-                            const items = rows.map(r => ({
-                              name: String(r['Nome'] || r['nome'] || '').trim(),
-                              stock: parseInt(r['Estoque'] || r['estoque'] || 0) || 0
-                            })).filter(i => i.name);
-                            const res = await fetch(`${API_URL}/products/stock/bulk`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ items })
-                            });
-                            const data = await res.json();
-                            setStockResult(data);
-                            fetchProducts();
-                          } catch { setStockResult({ error: true, message: 'Erro ao processar' }); }
-                          setStockSending(false);
-                        };
-                        reader.readAsArrayBuffer(stockFile);
-                      } catch { setStockSending(false); setStockResult({ error: true, message: 'Erro ao enviar' }); }
+                        const res = await fetch(`${API_URL}/products/stock/bulk`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ items: stockItems })
+                        });
+                        const data = await res.json();
+                        setStockResult(data);
+                        fetchProducts();
+                      } catch { setStockResult({ error: true, message: 'Erro ao enviar' }); }
+                      setStockSending(false);
                     }} className={`w-full py-3 rounded-xl font-medium text-white ${stockValid && !stockSending ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-300 cursor-not-allowed'}`}>
                       {stockSending ? (
                         <span className="flex items-center justify-center gap-2">
