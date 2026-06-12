@@ -117,33 +117,38 @@ export default function AdminProducts() {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         try {
-          const wb = XLSX.read(ev.target.result, { type: 'binary' });
+          const wb = XLSX.read(ev.target.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
           const rows = XLSX.utils.sheet_to_json(ws);
           let count = 0;
+          let errors = 0;
           for (const row of rows) {
-            const name = (row['Nome'] || '').trim();
+            const name = (row['Nome'] || row['nome'] || '').toString().trim();
             if (!name) continue;
+            let price = parseFloat(row['Preco'] || row['preco'] || 0);
+            if (isNaN(price)) price = 0;
             const payload = {
               name,
-              description: (row['Descricao'] || '').trim(),
-              price: parseFloat(row['Preco']) || 0,
-              unit: (row['Unidade'] || 'UND').trim(),
-              category: (row['Categoria'] || '').trim(),
-              stock: parseInt(row['Estoque']) || 0
+              description: (row['Descricao'] || row['descricao'] || '').toString().trim(),
+              price,
+              unit: (row['Unidade'] || row['unidade'] || 'UND').toString().trim(),
+              category: (row['Categoria'] || row['categoria'] || '').toString().trim(),
+              stock: parseInt(row['Estoque'] || row['estoque'] || 0) || 0
             };
-            await fetch(`${API_URL}/products`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-            });
-            count++;
+            try {
+              const res = await fetch(`${API_URL}/products`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+              if (res.ok) count++; else errors++;
+            } catch { errors++; }
           }
-          alert(`${count} produto(s) importado(s) com sucesso!`);
+          alert(`${count} produto(s) importado(s)${errors ? `, ${errors} erro(s)` : ''}!`);
           fetchProducts();
-        } catch { alert('Erro ao importar planilha'); }
+        } catch (err) { alert('Erro ao importar planilha: ' + err.message); }
       };
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     };
     input.click();
   };
