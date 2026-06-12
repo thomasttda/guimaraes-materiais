@@ -351,16 +351,23 @@ export default function AdminProducts() {
 
                     <button disabled={!stockValid || stockSending} onClick={async () => {
                       setStockSending(true);
+                      const controller = new AbortController();
+                      const timer = setTimeout(() => controller.abort(), 30000);
                       try {
                         const res = await fetch(`${API_URL}/products/stock/bulk`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ items: stockItems })
+                          body: JSON.stringify({ items: stockItems }),
+                          signal: controller.signal
                         });
+                        clearTimeout(timer);
                         const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
                         setStockResult(data);
                         fetchProducts();
-                      } catch { setStockResult({ error: true, message: 'Erro ao enviar' }); }
+                      } catch (err) {
+                        setStockResult({ error: true, message: err.name === 'AbortError' ? 'Tempo excedido (30s) — verifique se o backend está online' : err.message || 'Erro ao enviar' });
+                      }
                       setStockSending(false);
                     }} className={`w-full py-3 rounded-xl font-medium text-white ${stockValid && !stockSending ? 'bg-primary-500 hover:bg-primary-600' : 'bg-gray-300 cursor-not-allowed'}`}>
                       {stockSending ? (
