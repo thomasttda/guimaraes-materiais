@@ -56,6 +56,10 @@ async function startServer() {
     const fetchOptions = { method, headers: filteredHeaders };
 
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (filteredHeaders.authorization) headers.authorization = filteredHeaders.authorization;
+      const fetchOptions = { method, headers };
+
       if (req.body && Object.keys(req.body).length > 0) {
         fetchOptions.body = JSON.stringify(req.body);
       }
