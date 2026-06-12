@@ -126,10 +126,25 @@ app.delete('/api/products/:id', async (req, res) => {
   res.json({ message: 'Produto removido com sucesso' });
 });
 
-app.delete('/api/products/all', async (req, res) => {
-  const { error } = await supabase.from('products').delete().neq('id', 0);
-  if (error) throw error;
-  res.json({ message: 'Todos os produtos foram removidos' });
+app.put('/api/products/stock/bulk', async (req, res) => {
+  const { items } = req.body;
+  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida' });
+  let updated = 0;
+  for (const item of items) {
+    if (!item.name && !item.id) continue;
+    const stock = parseInt(item.stock) || 0;
+    if (item.id) {
+      await update('products', { stock }, 'id', item.id);
+      updated++;
+    } else if (item.name) {
+      const existing = await queryOne('products', { where: [{ field: 'name', value: item.name }] });
+      if (existing) {
+        await update('products', { stock }, 'id', existing.id);
+        updated++;
+      }
+    }
+  }
+  res.json({ updated, message: `${updated} produto(s) atualizado(s)` });
 });
 
 // ==================== QUOTES ====================

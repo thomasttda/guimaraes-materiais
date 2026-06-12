@@ -169,15 +169,39 @@ export default function AdminProducts() {
               <Upload className="w-4 h-4" /> Importar
             </button>
             <button onClick={async () => {
-              if (!confirm('Tem certeza que deseja EXCLUIR TODOS os produtos?')) return;
-              if (!confirm('ATENÇÃO! Esta ação é irreversível. Confirme a exclusão de todos os produtos.')) return;
-              try {
-                await fetch(`${API_URL}/products/all`, { method: 'DELETE' });
-                fetchProducts();
-                alert('Todos os produtos foram removidos');
-              } catch { alert('Erro ao excluir produtos'); }
-            }} className="py-2 px-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1 text-sm">
-              <Trash2 className="w-4 h-4" /> Excluir Todos
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = '.xlsx,.xls';
+              input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                  try {
+                    const wb = XLSX.read(ev.target.result, { type: 'array' });
+                    const ws = wb.Sheets[wb.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(ws);
+                    const items = rows.map(r => ({
+                      name: (r['Nome'] || r['nome'] || '').toString().trim(),
+                      stock: parseInt(r['Estoque'] || r['estoque'] || 0) || 0
+                    })).filter(i => i.name);
+                    if (items.length === 0) { alert('Nenhum produto encontrado na planilha'); return; }
+                    const res = await fetch(`${API_URL}/products/stock/bulk`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ items })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) { alert(data.error || 'Erro ao atualizar'); return; }
+                    alert(`Estoque atualizado: ${data.updated} produto(s)`);
+                    fetchProducts();
+                  } catch { alert('Erro ao processar planilha'); }
+                };
+                reader.readAsArrayBuffer(file);
+              };
+              input.click();
+            }} className="py-2 px-3 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center gap-1 text-sm">
+              <Upload className="w-4 h-4" /> Atualizar Estoque
             </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Tag className="w-4 h-4" /> Categorias
