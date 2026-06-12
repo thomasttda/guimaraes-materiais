@@ -113,33 +113,8 @@ app.post('/api/products', async (req, res) => {
 
 app.post('/api/products/stock/bulk', async (req, res) => {
   const { items } = req.body;
-  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida', received: typeof items });
-  let updated = 0;
-  let notFound = 0;
-  const debug = [];
-  for (const item of items) {
-    if (!item.name && !item.id) continue;
-    const stock = parseInt(item.stock) || 0;
-    if (item.id) {
-      await update('products', { stock }, 'id', item.id);
-      updated++;
-      debug.push({ id: item.id, stock, status: 'ok' });
-    } else if (item.name) {
-      const nameClean = item.name.trim();
-      let existing = await queryOne('products', { where: [{ field: 'name', value: nameClean }] });
-      if (!existing) existing = await queryOne('products', { where: [{ field: 'name', op: 'ilike', value: nameClean }] });
-      if (!existing) existing = await queryOne('products', { where: [{ field: 'name', op: 'ilike', value: `%${nameClean}%` }] });
-      if (existing) {
-        await update('products', { stock }, 'id', existing.id);
-        updated++;
-        debug.push({ name: nameClean, foundAs: existing.name, stock, status: 'ok' });
-      } else {
-        notFound++;
-        debug.push({ name: nameClean, status: 'not_found' });
-      }
-    }
-  }
-  res.json({ updated, notFound, debug, message: `${updated} produto(s) atualizado(s)${notFound ? `, ${notFound} não encontrado(s)` : ''}` });
+  if (!items || !Array.isArray(items)) return res.status(400).json({ error: 'Lista de produtos inválida', received: typeof items, bodyType: typeof req.body, bodyIsArray: Array.isArray(req.body), contentType: req.headers['content-type'], bodyLength: req.body ? JSON.stringify(req.body).length : 0 });
+  res.json({ updated: 0, notFound: 0, debug: items.map(i => ({ name: i.name, stock: i.stock, status: i.name ? 'will_process' : 'no_name' })), message: `${items.length} produto(s) recebidos (debug)` });
 });
 
 app.put('/api/products/:id', async (req, res) => {
