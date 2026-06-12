@@ -168,6 +168,17 @@ export default function AdminProducts() {
             <button onClick={handleImport} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Upload className="w-4 h-4" /> Importar
             </button>
+            <button onClick={async () => {
+              if (!confirm('Tem certeza que deseja EXCLUIR TODOS os produtos?')) return;
+              if (!confirm('ATENÇÃO! Esta ação é irreversível. Confirme a exclusão de todos os produtos.')) return;
+              try {
+                await fetch(`${API_URL}/products/all`, { method: 'DELETE' });
+                fetchProducts();
+                alert('Todos os produtos foram removidos');
+              } catch { alert('Erro ao excluir produtos'); }
+            }} className="py-2 px-3 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1 text-sm">
+              <Trash2 className="w-4 h-4" /> Excluir Todos
+            </button>
             <button onClick={() => setShowCatModal(true)} className="py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1 text-sm">
               <Tag className="w-4 h-4" /> Categorias
             </button>

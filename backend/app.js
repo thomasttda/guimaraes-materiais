@@ -126,6 +126,12 @@ app.delete('/api/products/:id', async (req, res) => {
   res.json({ message: 'Produto removido com sucesso' });
 });
 
+app.delete('/api/products/all', async (req, res) => {
+  const { error } = await supabase.from('products').delete().neq('id', 0);
+  if (error) throw error;
+  res.json({ message: 'Todos os produtos foram removidos' });
+});
+
 // ==================== QUOTES ====================
 
 app.post('/api/quotes', async (req, res) => {
