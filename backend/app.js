@@ -1459,7 +1459,7 @@ const todayRange = () => {
 
 app.get('/api/financeiro/resumo', async (req, res) => {
   const { start, end } = todayRange();
-  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['confirmed', 'sent', 'completed']);
+  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['draft', 'confirmed', 'sent', 'completed']);
   const vendas = notas || [];
   const total = vendas.reduce((s, n) => s + parseFloat(n.total || 0), 0);
   const porPagamento = {};
@@ -1488,7 +1488,7 @@ app.post('/api/financeiro/fechar-dia', async (req, res) => {
   const key = `fechamento_${start.slice(0, 10)}`;
   const existing = await queryOne('app_settings', { where: [{ field: 'key', value: key }] });
   if (existing) return res.status(400).json({ error: 'Dia já foi fechado' });
-  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['confirmed', 'sent', 'completed']);
+  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['draft', 'confirmed', 'sent', 'completed']);
   const vendas = notas || [];
   const total = vendas.reduce((s, n) => s + parseFloat(n.total || 0), 0);
   const porPagamento = {};
