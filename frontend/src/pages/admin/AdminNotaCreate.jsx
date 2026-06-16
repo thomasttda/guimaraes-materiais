@@ -26,7 +26,7 @@ export default function AdminNotaCreate() {
     customer_name: '', customer_phone: '', customer_email: '',
     customer_address: '', customer_cpf: '', attendant_name: '',
     items: [], subtotal: 0, discount: 0, discount_type: 'fixed',
-    total: 0, observations: '', payment_method: '', pix_discount: 0, installments: 1
+    total: 0, observations: '', payment_method: '', pix_discount: 0, installments: 1, credit_fee: 0
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDriverModal, setShowDriverModal] = useState(false);
@@ -59,7 +59,8 @@ export default function AdminNotaCreate() {
             observations: data.observations || '',
             payment_method: data.payment_method || '',
             pix_discount: data.pix_discount || 0,
-            installments: data.installments || 1
+            installments: data.installments || 1,
+            credit_fee: data.credit_fee || 0
           });
         }
         setLoadingEdit(false);
@@ -133,13 +134,15 @@ export default function AdminNotaCreate() {
     return { subtotal, total };
   };
 
-  const { subtotal, total } = calculateTotals();
+  let { subtotal, total } = calculateTotals();
+  const totalComTaxa = total + parseFloat(note.credit_fee || 0);
 
   const saveNote = async (status) => {
     const payload = {
       type, ...note, subtotal, total, status,
       attendant_name: note.attendant_name || settings.store_name
     };
+    if (note.payment_method !== 'Cartão Crédito') { payload.credit_fee = 0; }
     const method = editId ? 'PUT' : 'POST';
     const url = editId ? `${API_URL}/notes/${editId}` : `${API_URL}/notes`;
     const res = await fetch(url, {
@@ -414,6 +417,10 @@ export default function AdminNotaCreate() {
                         <option key={n} value={n}>{n}x {n > 1 ? `R$ ${(total / n).toFixed(2).replace('.', ',')}` : 'À vista'}</option>
                       ))}
                     </select>
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Taxa do Cartão (R$)</label>
+                      <input type="number" step="0.01" min="0" value={note.credit_fee} onChange={e => setNote({...note, credit_fee: parseFloat(e.target.value) || 0})} className="input-field text-sm" placeholder="Ex: 10,00" />
+                    </div>
                   </div>
                 )}
                 {note.payment_method === 'PIX' && (
@@ -428,6 +435,21 @@ export default function AdminNotaCreate() {
                     <span className="text-primary-600">R$ {total.toFixed(2).replace('.', ',')}</span>
                   </div>
                 </div>
+                {note.payment_method === 'Cartão Crédito' && parseFloat(note.credit_fee) > 0 && (
+                  <div className="pt-2">
+                    <div className="flex justify-between text-sm font-bold text-blue-600">
+                      <span>Taxa do Cartão:</span>
+                      <span>+ R$ {parseFloat(note.credit_fee).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold text-blue-700 pt-1 border-t border-blue-200 mt-1">
+                      <span>Total com Taxa:</span>
+                      <span>R$ {totalComTaxa.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Em {note.installments}x de R$ {(totalComTaxa / note.installments).toFixed(2).replace('.', ',')}
+                    </div>
+                  </div>
+                )}
                 {note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 && (
                   <div className="pt-2">
                     <div className="flex justify-between text-sm font-bold text-green-600">

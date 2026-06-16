@@ -1098,7 +1098,7 @@ app.get('/api/notes/:id', async (req, res) => {
 });
 
 app.post('/api/notes', async (req, res) => {
-  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method, pix_discount, installments } = req.body;
+  const { type, customer_name, customer_phone, customer_email, customer_address, customer_cpf, attendant_name, items, subtotal, discount, discount_type, total, observations, payment_method, pix_discount, installments, credit_fee } = req.body;
   const number = await generateNoteNumber(type, customer_name);
 
   // Auto-register customer if not exists
@@ -1113,12 +1113,12 @@ app.post('/api/notes', async (req, res) => {
     }
   }
 
-  // Try with pix_discount/installments first, fallback without
+  // Try with pix_discount/installments/credit_fee first, fallback without
   let data;
   try {
-    data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0, installments: installments || 1 });
+    data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '', pix_discount: pix_discount || 0, installments: installments || 1, credit_fee: credit_fee || 0 });
   } catch (e) {
-    if (e.message && (e.message.includes('pix_discount') || e.message.includes('installments'))) {
+    if (e.message && (e.message.includes('pix_discount') || e.message.includes('installments') || e.message.includes('credit_fee'))) {
       data = await insert('notes', { type, number, customer_name, customer_phone, customer_email: customer_email || '', customer_address: customer_address || '', customer_cpf: customer_cpf || '', attendant_name: attendant_name || '', items: items || [], subtotal, discount: discount || 0, discount_type: discount_type || 'fixed', total, observations: observations || '', payment_method: payment_method || '' });
     } else {
       throw e;
@@ -1130,7 +1130,7 @@ app.post('/api/notes', async (req, res) => {
 });
 
 app.put('/api/notes/:id', async (req, res) => {
-  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method', 'pix_discount', 'installments'];
+  const fields = ['type', 'customer_name', 'customer_phone', 'customer_email', 'customer_address', 'customer_cpf', 'attendant_name', 'subtotal', 'discount', 'discount_type', 'total', 'observations', 'status', 'payment_method', 'pix_discount', 'installments', 'credit_fee'];
   const updates = {};
   let oldStatus;
   if (req.body.status !== undefined) {
@@ -1145,9 +1145,10 @@ app.put('/api/notes/:id', async (req, res) => {
   try {
     data = await update('notes', updates, 'id', req.params.id);
   } catch (e) {
-    if (e.message && (e.message.includes('pix_discount') || e.message.includes('installments'))) {
+    if (e.message && (e.message.includes('pix_discount') || e.message.includes('installments') || e.message.includes('credit_fee'))) {
       delete updates.pix_discount;
       delete updates.installments;
+      delete updates.credit_fee;
       data = await update('notes', updates, 'id', req.params.id);
     } else {
       throw e;
