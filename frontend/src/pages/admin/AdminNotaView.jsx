@@ -116,7 +116,8 @@ export default function AdminNotaView() {
     const pagStr = note.payment_method ? `\n${L('FORMA PAGAMENTO: ' + note.payment_method)}` : '';
     const valPago = note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0
       ? (parseFloat(note.total) - parseFloat(note.pix_discount))
-      : note.total;
+      : note.payment_method === 'Fiado' ? 0 : note.total;
+    const fiadoStr = note.payment_method === 'Fiado' ? `\n${C('*** PENDENTE DE PAGAMENTO ***')}` : '';
 
     const header = `${dsep}
 ${nParts.map(n => C(n)).join('\n')}
@@ -144,7 +145,7 @@ ${LR('SUBTOTAL:', fmt(subtotal))}${discTxt}
 ${sep}
 ${LR('TOTAL:', fmt(note.total))}
 ${sep}${pagStr}${parcStr}${feeStr}
-${LR('VALOR PAGO:', fmt(valPago))}
+${LR('VALOR PAGO:', fmt(valPago))}${fiadoStr}
 ${sep}${obsTxt}
 ${dsep}
 ${C('OBRIGADO PELA PREFERENCIA!')}
@@ -230,16 +231,20 @@ ${dsep}`;
 
   const statusLabels = {
     draft: 'Rascunho', sent: 'Enviado', approved: 'Aprovado',
+    confirmed: 'Confirmado', pending_approval: 'Pendente',
     completed: 'Concluído', cancelled: 'Cancelado'
   };
   const statusColors = {
     draft: 'bg-gray-100 text-gray-800', sent: 'bg-blue-100 text-blue-800',
-    approved: 'bg-green-100 text-green-800', completed: 'bg-purple-100 text-purple-800',
+    approved: 'bg-green-100 text-green-800', confirmed: 'bg-green-100 text-green-800',
+    pending_approval: 'bg-yellow-100 text-yellow-800',
+    completed: 'bg-purple-100 text-purple-800',
     cancelled: 'bg-red-100 text-red-800'
   };
 
   const paymentLabels = {
-    Dinheiro: 'Dinheiro', PIX: 'PIX', 'Cartão Crédito': 'Cartão Crédito', 'Cartão Débito': 'Cartão Débito'
+    Dinheiro: 'Dinheiro', PIX: 'PIX', 'Cartão Crédito': 'Cartão Crédito',
+    'Cartão Débito': 'Cartão Débito', Fiado: 'Fiado'
   };
 
   const items = Array.isArray(note.items) ? note.items : (typeof note.items === 'string' ? (() => { try { return JSON.parse(note.items); } catch { return []; } })() : []);
@@ -301,6 +306,12 @@ ${dsep}`;
                 )}
                 {note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 && (
                   <p className="text-blue-200 text-xs mt-1">Desc. PIX: R$ {parseFloat(note.pix_discount).toFixed(2).replace('.', ',')}</p>
+                )}
+                {note.payment_method === 'Fiado' && (
+                  <p className="text-orange-300 text-sm mt-2 font-bold flex items-center gap-1 justify-end">
+                    <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">FIADO</span>
+                    Pendente de pagamento
+                  </p>
                 )}
               </div>
             </div>

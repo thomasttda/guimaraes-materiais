@@ -221,6 +221,7 @@ export default function AdminNotaCreate() {
     { value: 'PIX', label: 'PIX' },
     { value: 'Cartão Crédito', label: 'Cartão Crédito' },
     { value: 'Cartão Débito', label: 'Cartão Débito' },
+    { value: 'Fiado', label: 'Fiado' },
   ];
 
   if (loadingEdit) return (
@@ -427,6 +428,14 @@ export default function AdminNotaCreate() {
                   <div className="border-t pt-3">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Desconto PIX (R$)</label>
                     <input type="number" step="0.01" value={note.pix_discount} onChange={e => setNote({...note, pix_discount: parseFloat(e.target.value) || 0})} className="input-field text-sm" />
+                  </div>
+                )}
+                {note.payment_method === 'Fiado' && (
+                  <div className="border-t pt-3 bg-purple-50 -mx-3 px-3 py-2 rounded-lg">
+                    <p className="text-sm font-medium text-purple-700 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Venda Fiado — O cliente será cobrado posteriormente
+                    </p>
                   </div>
                 )}
                 <div className="border-t pt-3">

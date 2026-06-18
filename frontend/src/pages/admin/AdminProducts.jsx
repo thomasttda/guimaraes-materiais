@@ -48,19 +48,14 @@ export default function AdminProducts() {
     const payload = { ...form, price: parseFloat(form.price), stock: parseInt(form.stock) || 0 };
 
     try {
-      if (editing) {
-        await fetch(`${API_URL}/products/${editing}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await fetch(`${API_URL}/products`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-      }
+      const url = editing ? `${API_URL}/products/${editing}` : `${API_URL}/products`;
+      const method = editing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({ error: 'Erro desconhecido' })); alert(err.error || err.detail || 'Erro ao salvar produto'); return; }
       fetchProducts();
       resetForm();
     } catch (err) {

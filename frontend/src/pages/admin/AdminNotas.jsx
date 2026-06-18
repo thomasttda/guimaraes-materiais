@@ -52,11 +52,14 @@ export default function AdminNotas() {
 
   const statusLabels = {
     draft: 'Rascunho', sent: 'Enviado', approved: 'Aprovado',
+    confirmed: 'Confirmado', pending_approval: 'Pendente',
     completed: 'Concluído', cancelled: 'Cancelado'
   };
   const statusColors = {
     draft: 'bg-gray-100 text-gray-800', sent: 'bg-blue-100 text-blue-800',
-    approved: 'bg-green-100 text-green-800', completed: 'bg-purple-100 text-purple-800',
+    approved: 'bg-green-100 text-green-800', confirmed: 'bg-green-100 text-green-800',
+    pending_approval: 'bg-yellow-100 text-yellow-800',
+    completed: 'bg-purple-100 text-purple-800',
     cancelled: 'bg-red-100 text-red-800'
   };
 
@@ -96,20 +99,36 @@ export default function AdminNotas() {
           </div>
         </div>
 
+        {/* Filter Tabs */}
+        <div className="card p-2 mb-6">
+          <div className="flex gap-2">
+            {[
+              { key: 'all', label: 'Todas', icon: FileText, color: 'bg-gray-100 text-gray-700' },
+              { key: 'sale', label: 'Vendas', icon: ShoppingCart, color: 'bg-green-100 text-green-700' },
+              { key: 'quote', label: 'Orçamentos', icon: FileText, color: 'bg-blue-100 text-blue-700' },
+            ].map(t => {
+              const Icon = t.icon;
+              return (
+                <button key={t.key} onClick={() => setTypeFilter(t.key)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
+                    typeFilter === t.key
+                      ? t.color + ' ring-2 ring-offset-1 ' + (t.key === 'sale' ? 'ring-green-400' : t.key === 'quote' ? 'ring-blue-400' : 'ring-gray-400')
+                      : 'text-gray-400 hover:bg-gray-50'
+                  }`}>
+                  <Icon className="w-5 h-5" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="card p-4 mb-6">
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1">
+            <div className="flex-1 min-w-[200px]">
               <label className="block text-xs font-medium text-gray-600 mb-1">Buscar</label>
               <input type="text" placeholder="Cliente ou número..." value={search} onChange={e => setSearch(e.target.value)} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
-              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="input-field">
-                <option value="all">Todos</option>
-                <option value="quote">Orçamentos</option>
-                <option value="sale">Vendas</option>
-              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
@@ -118,6 +137,8 @@ export default function AdminNotas() {
                 <option value="draft">Rascunho</option>
                 <option value="sent">Enviado</option>
                 <option value="approved">Aprovado</option>
+                <option value="confirmed">Confirmado</option>
+                <option value="pending_approval">Pendente</option>
                 <option value="completed">Concluído</option>
                 <option value="cancelled">Cancelado</option>
               </select>
@@ -143,7 +164,9 @@ export default function AdminNotas() {
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">{note.customer_name} • {note.customer_phone}</p>
-                    <p className="text-xs text-gray-500">{new Date(note.created_at).toLocaleDateString('pt-BR')} • {note.items?.length || 0} itens{note.payment_method ? ` • ${note.payment_method}` : ''}</p>
+                    <p className="text-xs text-gray-500">{new Date(note.created_at).toLocaleDateString('pt-BR')} • {note.items?.length || 0} itens{note.payment_method ? ` • ${note.payment_method}` : ''}
+                      {note.payment_method === 'Fiado' && <span className="ml-1 text-orange-600 font-medium">(Pendente)</span>}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">

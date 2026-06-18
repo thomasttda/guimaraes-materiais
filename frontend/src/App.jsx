@@ -13,7 +13,7 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminQuotes from './pages/admin/AdminQuotes';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminSettings from './pages/admin/AdminSettings';
-import AdminFinanceiro from './pages/admin/AdminFinanceiro';
+import AdminFinanceiroUnificado from './pages/admin/AdminFinanceiroUnificado';
 import AdminContas from './pages/admin/AdminContas';
 import AdminEntregas from './pages/admin/AdminEntregas';
 import AdminClientes from './pages/admin/AdminClientes';
@@ -28,7 +28,6 @@ import AdminNotaView from './pages/admin/AdminNotaView';
 import AdminMonitorMap from './pages/admin/AdminMonitorMap';
 import AdminLogsMotoristas from './pages/admin/AdminLogsMotoristas';
 import AdminVendedores from './pages/admin/AdminVendedores';
-import AdminRelatorioDiario from './pages/admin/AdminRelatorioDiario';
 import AdminFloatingButton from './components/AdminFloatingButton';
 import DriverLogin from './pages/DriverLogin';
 import DriverDashboard from './pages/DriverDashboard';
@@ -60,8 +59,7 @@ function App() {
             <Route path="/admin/orcamentos" element={<ProtectedRoute><AdminQuotes /></ProtectedRoute>} />
             <Route path="/admin/pedidos" element={<ProtectedRoute><AdminOrders /></ProtectedRoute>} />
             <Route path="/admin/configuracoes" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
-            <Route path="/admin/financeiro" element={<ProtectedRoute><AdminFinanceiro /></ProtectedRoute>} />
-            <Route path="/admin/relatorio-diario" element={<ProtectedRoute><AdminRelatorioDiario /></ProtectedRoute>} />
+            <Route path="/admin/financeiro" element={<ProtectedRoute><AdminFinanceiroUnificado /></ProtectedRoute>} />
             <Route path="/admin/contas" element={<ProtectedRoute><AdminContas /></ProtectedRoute>} />
             <Route path="/admin/entregas" element={<ProtectedRoute><AdminEntregas /></ProtectedRoute>} />
             <Route path="/admin/clientes" element={<ProtectedRoute><AdminClientes /></ProtectedRoute>} />

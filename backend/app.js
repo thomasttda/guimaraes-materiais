@@ -1055,11 +1055,14 @@ async function generateNoteNumber(type, customerName) {
 }
 
 app.get('/api/notes', async (req, res) => {
-  const { type, status, customer_phone } = req.query;
+  const { type, status, customer_phone, start_date, end_date, payment_method } = req.query;
   const where = [];
   if (type) where.push({ field: 'type', value: type });
   if (status) where.push({ field: 'status', value: status });
   if (customer_phone) where.push({ field: 'customer_phone', value: customer_phone });
+  if (payment_method) where.push({ field: 'payment_method', value: payment_method });
+  if (start_date) where.push({ field: 'created_at', op: 'gte', value: start_date });
+  if (end_date) where.push({ field: 'created_at', op: 'lte', value: end_date + 'T23:59:59' });
   const data = await queryAll('notes', { where, order: { field: 'created_at', ascending: false } });
   data.forEach(n => { n.items = parseItems(n.items); });
   res.json(data);
@@ -1170,6 +1173,97 @@ app.put('/api/notes/:id', async (req, res) => {
 app.delete('/api/notes/:id', async (req, res) => {
   await remove('notes', 'id', req.params.id);
   res.json({ message: 'Nota removida' });
+});
+
+// ==================== CUSTOMER DEBTS (FIADO) ====================
+
+app.get('/api/customers/:phone/debts', async (req, res) => {
+  const notes = await queryAll('notes', {
+    where: [
+      { field: 'customer_phone', value: req.params.phone },
+      { field: 'payment_method', value: 'Fiado' },
+      { field: 'status', op: 'in', value: ['confirmed', 'sent'] }
+    ],
+    order: { field: 'created_at', ascending: false }
+  });
+  const total = notes.reduce((s, n) => s + parseFloat(n.total || 0), 0);
+  res.json({ notes, total });
+});
+
+// ==================== CAIXA (ABRIR/FECHAR DIA) ====================
+
+app.post('/api/caixa/abrir', async (req, res) => {
+  const { valor_inicial } = req.body;
+  const hoje = new Date().toISOString().slice(0, 10);
+  const existing = await queryOne('app_settings', { where: [{ field: 'key', value: `caixa_aberto_${hoje}` }] });
+  if (existing) return res.status(400).json({ error: 'Caixa já foi aberto hoje' });
+  await supabase.from('app_settings').insert({ key: `caixa_aberto_${hoje}`, value: JSON.stringify({ data: hoje, valor_inicial: valor_inicial || 0, abertoEm: new Date().toISOString() }) }).select();
+  res.json({ message: 'Caixa aberto', valor_inicial: valor_inicial || 0 });
+});
+
+app.get('/api/caixa/status', async (req, res) => {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const aberto = await queryOne('app_settings', { where: [{ field: 'key', value: `caixa_aberto_${hoje}` }] });
+  const fechado = await queryOne('app_settings', { where: [{ field: 'key', value: `fechamento_${hoje}` }] });
+  res.json({ aberto: !!aberto, fechado: !!fechado, dados: aberto ? JSON.parse(aberto.value) : null });
+});
+
+app.get('/api/caixa/resumo-caixa', async (req, res) => {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const start = hoje + 'T00:00:00';
+  const end = hoje + 'T23:59:59';
+
+  // Vendas do dia (todos status que representam venda feita)
+  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lte('created_at', end).in('status', ['draft', 'confirmed', 'sent', 'completed']);
+  const vendas = notas || [];
+  const totalVendas = vendas.reduce((s, n) => s + parseFloat(n.total || 0), 0);
+  const porPagamento = {};
+  const porVendedor = {};
+  for (const n of vendas) {
+    const pm = n.payment_method || 'Sem forma';
+    porPagamento[pm] = (porPagamento[pm] || 0) + parseFloat(n.total || 0);
+    const v = n.attendant_name || 'Sem vendedor';
+    porVendedor[v] = (porVendedor[v] || 0) + parseFloat(n.total || 0);
+  }
+
+  // Sangrias do dia
+  const sangrias = await queryAll('cash_flow', {
+    where: [
+      { field: 'created_at', op: 'gte', value: start },
+      { field: 'created_at', op: 'lte', value: end },
+      { field: 'category', value: 'sangria' }
+    ]
+  });
+  const totalSangrias = sangrias.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+
+  // Produtos com estoque baixo
+  const allProducts = await queryAll('products');
+  const lowStock = allProducts.filter(p => p.stock <= (p.min_stock || 10));
+
+  // Notas Fiado em aberto
+  const fiado = await queryAll('notes', {
+    where: [
+      { field: 'payment_method', value: 'Fiado' },
+      { field: 'status', op: 'in', value: ['confirmed', 'sent'] }
+    ]
+  });
+  const totalFiado = fiado.reduce((s, n) => s + parseFloat(n.total || 0), 0);
+
+  // Contas a vencer
+  const bills = await queryAll('bills', { where: [{ field: 'status', value: 'pending' }] });
+  // Entregas pendentes
+  const pendingDeliveries = await queryAll('deliveries', {
+    where: [{ field: 'status', op: 'in', value: ['preparing', 'ready'] }]
+  });
+
+  res.json({
+    totalVendas, porPagamento, porVendedor,
+    sangrias, totalSangrias,
+    lowStock: lowStock.length,
+    fiadoQtd: fiado.length, totalFiado,
+    billsCount: bills.length,
+    deliveriesCount: pendingDeliveries.length
+  });
 });
 
 // ==================== ADMIN ACTIVITY LOGS ====================
@@ -1382,8 +1476,13 @@ app.get('/api/dashboard', async (req, res) => {
   const { count: totalQuotes } = await supabase.from('quotes').select('*', { count: 'exact', head: true });
   const { count: pendingQuotes } = await supabase.from('quotes').select('*', { count: 'exact', head: true }).eq('status', 'pending');
   const { count: totalOrders } = await supabase.from('orders').select('*', { count: 'exact', head: true });
+  // Revenue from confirmed/completed notas (current system)
+  const { data: notasRevenue } = await supabase.from('notes').select('total').neq('status', 'cancelled');
+  const notasTotal = notasRevenue?.reduce((sum, n) => sum + (n.total || 0), 0) || 0;
+  // Revenue from legacy orders
   const orders = await supabase.from('orders').select('total').neq('status', 'cancelled');
-  const totalRevenue = orders.data?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+  const ordersTotal = orders.data?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+  const totalRevenue = notasTotal + ordersTotal;
   const { data: income } = await supabase.from('cash_flow').select('amount').eq('type', 'income');
   const totalIncome = income?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
   const { data: expense } = await supabase.from('cash_flow').select('amount').eq('type', 'expense');
@@ -1396,12 +1495,18 @@ app.get('/api/dashboard', async (req, res) => {
   const totalBillsAmount = billsData?.reduce((sum, b) => sum + (b.amount || 0), 0) || 0;
   const { count: pendingDeliveries } = await supabase.from('deliveries').select('*', { count: 'exact', head: true }).in('status', ['preparing', 'ready', 'out_for_delivery']);
   const { count: totalNotes } = await supabase.from('notes').select('*', { count: 'exact', head: true });
-  const lowStock = await supabase.from('products').select('id, name, stock, min_stock').lte('stock', 'min_stock');
+  const allProducts = await supabase.from('products').select('id, name, stock, min_stock');
+  const lowStock = (allProducts.data || []).filter(p => p.stock <= (p.min_stock || 10));
   const { data: monthlyOrders } = await supabase.from('orders').select('total, created_at').neq('status', 'cancelled').gte('created_at', new Date(Date.now() - 180 * 86400000).toISOString());
+  const { data: monthlyNotes } = await supabase.from('notes').select('total, created_at').neq('status', 'cancelled').gte('created_at', new Date(Date.now() - 180 * 86400000).toISOString());
   const monthlyRev = {};
   (monthlyOrders || []).forEach(o => {
     const m = new Date(o.created_at).toISOString().slice(0, 7);
     monthlyRev[m] = (monthlyRev[m] || 0) + (o.total || 0);
+  });
+  (monthlyNotes || []).forEach(n => {
+    const m = new Date(n.created_at).toISOString().slice(0, 7);
+    monthlyRev[m] = (monthlyRev[m] || 0) + (n.total || 0);
   });
   const monthlyRevenue = Object.entries(monthlyRev).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6).map(([month, total]) => ({ month, total }));
   const topProducts = await supabase.from('products').select('name, category, stock, price').order('featured', { ascending: false }).order('stock', { ascending: false }).limit(5);

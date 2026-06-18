@@ -125,7 +125,6 @@ export default function Admin() {
               { label: 'Notas', icon: Receipt, link: '/admin/notas', color: 'text-amber-600' },
               { label: 'Fornecedores', icon: Building2, link: '/admin/fornecedores', color: 'text-cyan-600' },
               { label: 'Vendedores', icon: UserCheck, link: '/admin/vendedores', color: 'text-indigo-600' },
-              { label: 'Rel. Diário', icon: BarChart3, link: '/admin/relatorio-diario', color: 'text-emerald-600' },
               { label: 'Config', icon: Settings, link: '/admin/configuracoes', color: 'text-gray-600' },
             ].map(item => (
               <Link key={item.label} to={item.link} className="flex flex-col items-center gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">

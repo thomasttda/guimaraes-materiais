@@ -11,6 +11,7 @@ export default function AdminClienteDetalhe() {
   const { id } = useParams();
   const [customer, setCustomer] = useState(null);
   const [notes, setNotes] = useState([]);
+  const [fiadoDebts, setFiadoDebts] = useState(null);
   const [logs, setLogs] = useState({});
   const [expanded, setExpanded] = useState({});
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,8 @@ export default function AdminClienteDetalhe() {
       if (c?.phone) {
         const n = await fetch(`${API_URL}/notes?customer_phone=${encodeURIComponent(c.phone)}`).then(r => r.json()).catch(() => []);
         setNotes(n);
+        const f = await fetch(`${API_URL}/customers/${encodeURIComponent(c.phone)}/debts`).then(r => r.json()).catch(() => null);
+        setFiadoDebts(f);
         if (n.length) {
           const ids = n.map(x => x.id).join(',');
           const l = await fetch(`${API_URL}/admin/activity-logs/admin?resource_type=note&resource_id=${ids}`).then(r => r.json()).catch(() => []);
@@ -73,6 +76,27 @@ export default function AdminClienteDetalhe() {
           </div>
           {customer.address && <p className="mt-3 text-sm text-gray-600"><MapPin className="w-4 h-4 inline text-gray-400" /> {customer.address}{customer.neighborhood ? `, ${customer.neighborhood}` : ''}</p>}
         </div>
+
+        {/* Fiado Debts */}
+        {fiadoDebts && fiadoDebts.notes && fiadoDebts.notes.length > 0 && (
+          <div className="bg-orange-50 border-2 border-orange-300 rounded-xl p-6 mb-8">
+            <h2 className="text-lg font-bold text-orange-800 mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Débitos Fiado — Total: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(fiadoDebts.total)}
+            </h2>
+            <div className="space-y-3">
+              {fiadoDebts.notes.map(n => (
+                <Link key={n.id} to={`/admin/notas/${n.id}`} className="flex items-center justify-between bg-white rounded-lg px-4 py-3 hover:shadow-sm transition-shadow">
+                  <div>
+                    <p className="font-medium text-sm text-gray-800">{n.number}</p>
+                    <p className="text-xs text-gray-500">{new Date(n.created_at).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  <span className="font-bold text-orange-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n.total)}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Notes History */}
         <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Clock className="w-5 h-5" /> Histórico de Notas</h2>
