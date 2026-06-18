@@ -49,11 +49,12 @@ app.get('/api/admin/me', authMiddleware, (req, res) => {
 
 app.get('/api/products', async (req, res) => {
   const { category, featured, search } = req.query;
-  let query = supabase.from('products').select('*').order('featured', { ascending: false }).order('name', { ascending: true });
+  let query = supabase.from('products').select('*', { count: 'exact' }).order('featured', { ascending: false }).order('name', { ascending: true });
   if (category) query = query.eq('category', category);
   if (featured === 'true') query = query.eq('featured', 1);
   if (search) query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
-  const { data: products, error } = await query;
+  query = query.limit(5000);
+  const { data: products, error, count } = await query;
   if (error) return res.status(500).json({ error: error.message });
   // Enrich with supplier name
   const enriched = await Promise.all(products.map(async (p) => {
