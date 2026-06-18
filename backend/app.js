@@ -48,16 +48,43 @@ app.get('/api/admin/me', authMiddleware, (req, res) => {
 // ==================== PRODUCTS ====================
 
 app.get('/api/products', async (req, res) => {
-  const { category, featured, search } = req.query;
-  let query = supabase.from('products').select('*', { count: 'exact' }).order('featured', { ascending: false }).order('name', { ascending: true });
-  if (category) query = query.eq('category', category);
-  if (featured === 'true') query = query.eq('featured', 1);
-  if (search) query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
-  query = query.limit(5000);
-  const { data: products, error, count } = await query;
-  if (error) return res.status(500).json({ error: error.message });
+  let { category, featured, search, page, pageSize: rawPageSize } = req.query;
+  const fetchAll = !page && !rawPageSize;
+  page = Math.max(1, parseInt(page) || 1);
+  const pageSize = Math.min(2000, Math.max(1, parseInt(rawPageSize) || 100));
+  const offset = (page - 1) * pageSize;
+  const allData = [];
+  // Count first
+  let countQuery = supabase.from('products').select('*', { count: 'exact', head: true });
+  if (category) countQuery = countQuery.eq('category', category);
+  if (featured === 'true') countQuery = countQuery.eq('featured', 1);
+  if (search) countQuery = countQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+  const { count, error: countErr } = await countQuery;
+  if (countErr) return res.status(500).json({ error: countErr.message });
+  if (fetchAll && (count || 0) > 1000) {
+    // Paginate in batches of 1000
+    const totalCount = count || 0;
+    for (let i = 0; i < totalCount; i += 1000) {
+      let q = supabase.from('products').select('*').order('featured', { ascending: false }).order('name', { ascending: true }).range(i, Math.min(i + 999, totalCount - 1));
+      if (category) q = q.eq('category', category);
+      if (featured === 'true') q = q.eq('featured', 1);
+      if (search) q = q.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      const { data, error } = await q;
+      if (error) return res.status(500).json({ error: error.message });
+      allData.push(...data);
+    }
+  } else {
+    let q = supabase.from('products').select('*').order('featured', { ascending: false }).order('name', { ascending: true });
+    if (category) q = q.eq('category', category);
+    if (featured === 'true') q = q.eq('featured', 1);
+    if (search) q = q.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+    if (!fetchAll) q = q.range(offset, offset + pageSize - 1);
+    const { data, error } = await q;
+    if (error) return res.status(500).json({ error: error.message });
+    allData.push(...(data || []));
+  }
   // Enrich with supplier name
-  const enriched = await Promise.all(products.map(async (p) => {
+  const enriched = await Promise.all(allData.map(async (p) => {
     if (p.supplier_id) {
       const { data: sup } = await supabase.from('suppliers').select('name').eq('id', p.supplier_id).single();
       return { ...p, supplier_name: sup?.name || null };
