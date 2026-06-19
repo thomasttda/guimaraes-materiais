@@ -1552,6 +1552,10 @@ app.get('/api/dashboard', async (req, res) => {
   const orders = await supabase.from('orders').select('total').neq('status', 'cancelled');
   const ordersTotal = orders.data?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
   const totalRevenue = notasTotal + ordersTotal;
+  // Today's revenue
+  const hoje = new Date().toISOString().slice(0, 10);
+  const { data: todayNotes } = await supabase.from('notes').select('total').neq('status', 'cancelled').gte('created_at', hoje + 'T00:00:00').lte('created_at', hoje + 'T23:59:59');
+  const todayRevenue = todayNotes?.reduce((s, n) => s + (n.total || 0), 0) || 0;
   const { data: income } = await supabase.from('cash_flow').select('amount').eq('type', 'income');
   const totalIncome = income?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
   const { data: expense } = await supabase.from('cash_flow').select('amount').eq('type', 'expense');
@@ -1585,7 +1589,7 @@ app.get('/api/dashboard', async (req, res) => {
   const categories = Object.entries(catCount).sort((a, b) => b[1] - a[1]).map(([category, count]) => ({ category, count }));
   const { count: unreadNotifications } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('read', 0);
 
-  res.json({ totalProducts, totalQuotes, pendingQuotes, totalOrders, totalRevenue, cashBalance, totalIncome, totalExpense, pendingBills, overdueBills, totalBillsAmount, pendingDeliveries, totalNotes, lowStock: lowStock.data || [], monthlyRevenue, topProducts: topProducts.data || [], categories, unreadNotifications });
+  res.json({ totalProducts, totalQuotes, pendingQuotes, totalOrders, totalRevenue, todayRevenue, cashBalance, totalIncome, totalExpense, pendingBills, overdueBills, totalBillsAmount, pendingDeliveries, totalNotes, lowStock: lowStock.data || [], monthlyRevenue, topProducts: topProducts.data || [], categories, unreadNotifications });
 });
 
 // ==================== CHECK REMINDERS ====================

@@ -52,7 +52,7 @@ export default function Admin() {
     { label: 'Produtos', value: stats.totalProducts, icon: Package, color: 'bg-blue-500', link: '/admin/produtos' },
     { label: 'Orçamentos', value: stats.totalQuotes, icon: FileText, color: 'bg-green-500', link: '/admin/orcamentos' },
     { label: 'Pedidos', value: stats.totalOrders, icon: ShoppingCart, color: 'bg-primary-500', link: '/admin/pedidos' },
-    { label: 'Receita', value: `R$ ${stats.totalRevenue.toFixed(2).replace('.', ',')}`, icon: BarChart3, color: 'bg-purple-500', link: '/admin/financeiro' },
+    { label: 'Receita', value: `R$ ${(stats.todayRevenue || stats.totalRevenue).toFixed(2).replace('.', ',')}`, icon: BarChart3, color: 'bg-purple-500', link: '/admin/financeiro' },
     { label: 'Saldo Caixa', value: `R$ ${stats.cashBalance.toFixed(2).replace('.', ',')}`, icon: DollarSign, color: stats.cashBalance >= 0 ? 'bg-green-600' : 'bg-red-600', link: '/admin/financeiro' },
     { label: 'Entregas Pendentes', value: stats.pendingDeliveries, icon: Truck, color: 'bg-indigo-500', link: '/admin/entregas' },
     { label: 'Contas a Pagar', value: stats.pendingBills, icon: Calendar, color: 'bg-orange-500', link: '/admin/contas' },
