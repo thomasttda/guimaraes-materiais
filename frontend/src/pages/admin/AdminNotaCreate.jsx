@@ -4,6 +4,8 @@ import { ArrowLeft, Plus, Trash2, Save, FileText, ShoppingCart, User, Search, Mi
 
 const API_URL = '/api';
 
+const creditTaxas = { 1: 3.5, 2: 4.5, 3: 5.5, 4: 6.5, 5: 7.5, 6: 8.5, 7: 9.5, 8: 10.5, 9: 11.5, 10: 12.5, 11: 13.5, 12: 14.5 };
+
 export default function AdminNotaCreate() {
   const navigate = useNavigate();
   const { id: editId } = useParams();
@@ -67,6 +69,16 @@ export default function AdminNotaCreate() {
       }).catch(() => setLoadingEdit(false));
     }
   }, [editId]);
+
+  useEffect(() => {
+    if (note.payment_method === 'Cartão Crédito') {
+      const taxa = creditTaxas[note.installments] || 0;
+      const newFee = total * (taxa / 100);
+      if (note.credit_fee !== newFee) {
+        setNote(prev => ({ ...prev, credit_fee: newFee }));
+      }
+    }
+  }, [total]);
 
   const openQtySelector = (product) => {
     const existing = note.items.find(i => i.id === product.id);
@@ -392,7 +404,15 @@ export default function AdminNotaCreate() {
                 {type === 'sale' && (
                   <div className="border-t pt-3">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Forma de Pagamento</label>
-                    <select value={note.payment_method} onChange={e => setNote({...note, payment_method: e.target.value})} className="input-field text-sm">
+                    <select value={note.payment_method} onChange={e => {
+                      const pm = e.target.value;
+                      if (pm === 'Cartão Crédito') {
+                        const taxa = creditTaxas[note.installments] || 0;
+                        setNote({...note, payment_method: pm, credit_fee: total * (taxa / 100)});
+                      } else {
+                        setNote({...note, payment_method: pm, credit_fee: 0});
+                      }
+                    }} className="input-field text-sm">
                       {paymentMethods.map(pm => (
                         <option key={pm.value} value={pm.value}>{pm.label}</option>
                       ))}
@@ -413,15 +433,15 @@ export default function AdminNotaCreate() {
                 {note.payment_method === 'Cartão Crédito' && (
                   <div className="border-t pt-3">
                     <label className="block text-xs font-medium text-gray-600 mb-1">Parcelas</label>
-                    <select value={note.installments} onChange={e => setNote({...note, installments: parseInt(e.target.value)})} className="input-field text-sm">
+                    <select value={note.installments} onChange={e => {
+                      const n = parseInt(e.target.value);
+                      const taxa = creditTaxas[n] || 0;
+                      setNote({...note, installments: n, credit_fee: total * (taxa / 100)});
+                    }} className="input-field text-sm">
                       {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
-                        <option key={n} value={n}>{n}x {n > 1 ? `R$ ${(total / n).toFixed(2).replace('.', ',')}` : 'À vista'}</option>
+                        <option key={n} value={n}>{n}x - {n === 1 ? 'À vista' : `R$ ${((total + total * (creditTaxas[n] / 100)) / n).toFixed(2).replace('.', ',')}`} ({creditTaxas[n]}%)</option>
                       ))}
                     </select>
-                    <div className="mt-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Taxa do Cartão (R$)</label>
-                      <input type="number" step="0.01" min="0" value={note.credit_fee} onChange={e => setNote({...note, credit_fee: parseFloat(e.target.value) || 0})} className="input-field text-sm" placeholder="Ex: 10,00" />
-                    </div>
                   </div>
                 )}
                 {note.payment_method === 'PIX' && (
@@ -447,7 +467,7 @@ export default function AdminNotaCreate() {
                 {note.payment_method === 'Cartão Crédito' && parseFloat(note.credit_fee) > 0 && (
                   <div className="pt-2">
                     <div className="flex justify-between text-sm font-bold text-blue-600">
-                      <span>Taxa do Cartão:</span>
+                      <span>Taxa do Cartão ({creditTaxas[note.installments]}%):</span>
                       <span>+ R$ {parseFloat(note.credit_fee).toFixed(2).replace('.', ',')}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold text-blue-700 pt-1 border-t border-blue-200 mt-1">

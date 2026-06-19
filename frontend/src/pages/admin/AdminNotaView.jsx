@@ -107,11 +107,12 @@ export default function AdminNotaView() {
       : '';
 
     const isCredit = note.payment_method === 'Cartão Crédito' || note.payment_method === 'Cartao Credito';
+    const feePct = isCredit && parseFloat(note.credit_fee) > 0 ? ((parseFloat(note.credit_fee) / Math.max(note.total, 0.01)) * 100).toFixed(1).replace('.', ',') : null;
     const parcStr = isCredit && note.installments > 1
       ? `\n${L(`${note.installments}x DE R$ ${(note.total / note.installments).toFixed(2)}}`)}`
       : isCredit ? `\n${L('AVISTA')}` : '';
     const feeStr = isCredit && parseFloat(note.credit_fee) > 0
-      ? `\n${LR('TAXA CARTAO:', fmt(note.credit_fee))}`
+      ? `\n${LR(`TAXA ${feePct}%:`, fmt(note.credit_fee))}`
       : '';
     const pagStr = note.payment_method ? `\n${L('FORMA PAGAMENTO: ' + note.payment_method)}` : '';
     const valPago = note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0
@@ -302,7 +303,7 @@ ${dsep}`;
                   <p className="text-blue-200 text-sm mt-1">Pagamento: {note.payment_method}</p>
                 )}
                 {note.type === 'sale' && (note.payment_method === 'Cartão Crédito' || note.payment_method === 'Cartao Credito') && (
-                  <p className="text-blue-200 text-sm mt-1">{note.installments > 1 ? `${note.installments}x R$ ${(note.total / note.installments).toFixed(2).replace('.', ',')}` : 'À vista'}{parseFloat(note.credit_fee) > 0 && <span className="text-xs ml-1">(taxa: R$ {parseFloat(note.credit_fee).toFixed(2).replace('.', ',')})</span>}</p>
+                  <p className="text-blue-200 text-sm mt-1">{note.installments > 1 ? `${note.installments}x R$ ${(note.total / note.installments).toFixed(2).replace('.', ',')}` : 'À vista'}{parseFloat(note.credit_fee) > 0 && <span className="text-xs ml-1">(taxa: {feePct}% — R$ {parseFloat(note.credit_fee).toFixed(2).replace('.', ',')})</span>}</p>
                 )}
                 {note.payment_method === 'PIX' && parseFloat(note.pix_discount) > 0 && (
                   <p className="text-blue-200 text-xs mt-1">Desc. PIX: R$ {parseFloat(note.pix_discount).toFixed(2).replace('.', ',')}</p>
