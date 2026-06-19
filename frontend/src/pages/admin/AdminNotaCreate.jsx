@@ -334,9 +334,9 @@ export default function AdminNotaCreate() {
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Qtd</label>
                             <div className="flex items-center gap-1">
-                              <button onClick={() => updateItem(item.id, 'quantity', Math.max(item.unit === 'M' ? 0.1 : 1, (item.quantity || 1) - (item.unit === 'M' ? 0.5 : 1)))} className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold"><Minus className="w-3 h-3" /></button>
-                              <input type="number" min={item.unit === 'M' ? '0.1' : '1'} step={item.unit === 'M' ? '0.5' : '1'} value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} className="input-field text-sm text-center w-16" />
-                              <button onClick={() => updateItem(item.id, 'quantity', (item.quantity || 1) + (item.unit === 'M' ? 0.5 : 1))} className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold"><Plus className="w-3 h-3" /></button>
+                              <button onClick={() => updateItem(item.id, 'quantity', Math.max(0.5, (item.quantity || 1) - 0.5))} className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold"><Minus className="w-3 h-3" /></button>
+                              <input type="number" min="0.5" step="0.5" value={item.quantity} onChange={e => updateItem(item.id, 'quantity', e.target.value)} className="input-field text-sm text-center w-16" />
+                              <button onClick={() => updateItem(item.id, 'quantity', (item.quantity || 1) + 0.5)} className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold"><Plus className="w-3 h-3" /></button>
                             </div>
                           </div>
                           <div>
@@ -526,10 +526,15 @@ export default function AdminNotaCreate() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                  <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
+                    {[0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 10].map(v => (
+                      <button key={v} onClick={() => setSelectedQty(v)} className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${selectedQty === v ? 'bg-primary-500 text-white border-primary-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`}>{v}</button>
+                    ))}
+                  </div>
                   <div className="flex items-center justify-center gap-4">
-                    <button onClick={() => setSelectedQty(Math.max(selectedProduct.unit === 'M' ? 0.1 : 1, selectedQty - (selectedProduct.unit === 'M' ? 0.5 : 1)))} className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><Minus className="w-5 h-5" /></button>
-                    <input type="number" min={selectedProduct.unit === 'M' ? '0.1' : '1'} step={selectedProduct.unit === 'M' ? '0.5' : '1'} value={selectedQty} onChange={e => setSelectedQty(Math.max(selectedProduct.unit === 'M' ? 0.1 : 1, parseFloat(e.target.value) || (selectedProduct.unit === 'M' ? 0.1 : 1)))} className="input-field text-center text-2xl font-bold w-24 h-12" />
-                    <button onClick={() => setSelectedQty(selectedQty + (selectedProduct.unit === 'M' ? 0.5 : 1))} className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><Plus className="w-5 h-5" /></button>
+                    <button onClick={() => setSelectedQty(Math.max(0.5, selectedQty - 0.5))} className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><Minus className="w-5 h-5" /></button>
+                    <input type="number" min="0.5" step="0.5" value={selectedQty} onChange={e => setSelectedQty(Math.max(0.5, parseFloat(e.target.value) || 0.5))} className="input-field text-center text-2xl font-bold w-24 h-12" />
+                    <button onClick={() => setSelectedQty(selectedQty + 0.5)} className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><Plus className="w-5 h-5" /></button>
                   </div>
                 </div>
                 <div className="mt-6 pt-4 border-t">
