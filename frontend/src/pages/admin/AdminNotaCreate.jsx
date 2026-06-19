@@ -70,6 +70,9 @@ export default function AdminNotaCreate() {
     }
   }, [editId]);
 
+  let { subtotal, total } = calculateTotals();
+  const totalComTaxa = total + parseFloat(note.credit_fee || 0);
+
   useEffect(() => {
     if (note.payment_method === 'Cartão Crédito') {
       const taxa = creditTaxas[note.installments] || 0;
@@ -145,9 +148,6 @@ export default function AdminNotaCreate() {
     const total = Math.max(0, subtotal - discountAmount);
     return { subtotal, total };
   };
-
-  let { subtotal, total } = calculateTotals();
-  const totalComTaxa = total + parseFloat(note.credit_fee || 0);
 
   const saveNote = async (status) => {
     const payload = {
