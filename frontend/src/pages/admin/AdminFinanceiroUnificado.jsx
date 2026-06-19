@@ -584,15 +584,7 @@ function Caixa() {
 }
 
 function LancamentosActions() {
-  const [showForm, setShowFormInternal] = useState(false);
-  const actions = { showForm, setShowFormInternal };
-  // This is passed via a window hack for simplicity
-  window.__lancamentosActions = actions;
-  return (
-    <button onClick={() => { const a = window.__lancamentosActions; if (a) a.setShowFormInternal(true); }} className="btn-primary flex items-center gap-2">
-      <Plus className="w-5 h-5" /> Novo Lançamento
-    </button>
-  );
+  return null;
 }
 
 function Lancamentos() {
@@ -605,7 +597,6 @@ function Lancamentos() {
   const [form, setForm] = useState({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash' });
 
   useEffect(() => {
-    window.__lancamentosActions = { showForm, setShowForm };
     fetchData();
   }, [filter, dateRange]);
 
@@ -661,6 +652,11 @@ function Lancamentos() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button onClick={() => { setForm({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash' }); setEditing(null); setShowForm(true); }} className="btn-primary flex items-center gap-2">
+          <Plus className="w-5 h-5" /> Novo Lançamento
+        </button>
+      </div>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card p-6 border-l-4 border-green-500">
@@ -813,13 +809,7 @@ function Lancamentos() {
 const expenseCategories = ['Vale', 'Gasolina', 'Passagem', 'Salário', 'Alimentação', 'Ferramentas', 'Outro'];
 
 function FuncionariosActions() {
-  const [showForm, setShowFormInternal] = useState(false);
-  window.__funcActions = { showForm, setShowFormInternal };
-  return (
-    <button onClick={() => { const a = window.__funcActions; if (a) a.setShowFormInternal(true); }} className="btn-primary flex items-center gap-2">
-      <Plus className="w-5 h-5" /> Novo Funcionário
-    </button>
-  );
+  return null;
 }
 
 function Funcionarios() {
@@ -828,8 +818,6 @@ function Funcionarios() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', role: 'funcionario', salary: '' });
   const [selectedEmp, setSelectedEmp] = useState(null);
-
-  useEffect(() => { window.__funcActions = { ...(window.__funcActions || {}), setShowFormInternal: setShowForm }; }, []);
 
   const fetchEmployees = () => fetch(`${API_URL}/employees`).then(r => r.json()).then(setEmployees).catch(() => {});
   useEffect(() => { fetchEmployees(); }, []);
@@ -864,6 +852,11 @@ function Funcionarios() {
 
   return (
     <div>
+      <div className="flex justify-end mb-4">
+        <button onClick={() => { setForm({ name: '', phone: '', role: 'funcionario', salary: '' }); setEditing(null); setShowForm(true); }} className="btn-primary flex items-center gap-2">
+          <Plus className="w-5 h-5" /> Novo Funcionário
+        </button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="card p-4">
           <p className="text-2xl font-bold">{employees.length}</p>
