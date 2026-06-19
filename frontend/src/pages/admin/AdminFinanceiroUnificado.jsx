@@ -594,7 +594,10 @@ function Lancamentos() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash' });
+  const [form, setForm] = useState({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash', employee_id: '' });
+  const [employees, setEmployees] = useState([]);
+
+  useEffect(() => { fetch(`${API_URL}/employees`).then(r => r.json()).then(setEmployees).catch(() => {}); }, []);
 
   useEffect(() => {
     fetchData();
@@ -619,11 +622,29 @@ function Lancamentos() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = { ...form, amount: parseFloat(form.amount) };
+    delete payload.employee_id;
     try {
       if (editing) {
         await fetch(`${API_URL}/cash-flow/${editing}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       } else {
-        await fetch(`${API_URL}/cash-flow`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const cashRes = await fetch(`${API_URL}/cash-flow`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const cashData = await cashRes.json();
+        // If an employee was selected and it's an expense, also record as employee expense
+        if (form.employee_id && form.type === 'expense') {
+          const emp = employees.find(e => e.id == form.employee_id);
+          await fetch(`${API_URL}/employees/${form.employee_id}/expenses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              category: 'Outro',
+              description: form.description || payload.category,
+              amount: parseFloat(form.amount),
+              date: new Date().toISOString().slice(0, 10),
+              payment_method: form.payment_method || 'dinheiro',
+              notes: `Lançamento financeiro #${cashData.id}`
+            })
+          });
+        }
       }
       fetchData();
       resetForm();
@@ -637,7 +658,7 @@ function Lancamentos() {
   };
 
   const resetForm = () => {
-    setForm({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash' });
+    setForm({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash', employee_id: '' });
     setEditing(null);
     setShowForm(false);
   };
@@ -653,7 +674,7 @@ function Lancamentos() {
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
-        <button onClick={() => { setForm({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash' }); setEditing(null); setShowForm(true); }} className="btn-primary flex items-center gap-2">
+        <button onClick={() => { setForm({ type: 'income', category: '', description: '', amount: '', payment_method: 'cash', employee_id: '' }); setEditing(null); setShowForm(true); }} className="btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" /> Novo Lançamento
         </button>
       </div>
@@ -750,6 +771,16 @@ function Lancamentos() {
                   {lancPaymentMethods.map(m => <option key={m} value={m}>{lancPaymentLabels[m]}</option>)}
                 </select>
               </div>
+              {form.type === 'expense' && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Funcionário (opcional)</label>
+                <select value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})} className="input-field">
+                  <option value="">Nenhum</option>
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                </select>
+                {form.employee_id && <p className="text-xs text-gray-500 mt-1">Também será registrado como despesa no perfil do funcionário</p>}
+              </div>
+              )}
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={resetForm} className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
                 <button type="submit" className="flex-1 btn-primary">{editing ? 'Salvar' : 'Adicionar'}</button>
@@ -791,7 +822,7 @@ function Lancamentos() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => { setEditing(entry.id); setForm({ type: entry.type, category: entry.category, description: entry.description, amount: entry.amount.toString(), payment_method: entry.payment_method }); setShowForm(true); }} className="text-blue-600 hover:text-blue-800"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => { setEditing(entry.id); setForm({ type: entry.type, category: entry.category, description: entry.description, amount: entry.amount.toString(), payment_method: entry.payment_method, employee_id: '' }); setShowForm(true); }} className="text-blue-600 hover:text-blue-800"><Edit2 className="w-4 h-4" /></button>
                       <button onClick={() => handleDelete(entry.id)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
