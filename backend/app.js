@@ -1156,6 +1156,20 @@ app.post('/api/notes', async (req, res) => {
     }
   }
   const noteData = data[0];
+  // Decrement stock for sale items
+  if (type === 'venda' && items) {
+    const parsedItems = parseItems(items);
+    for (const item of parsedItems) {
+      if (item.custom || !item.id) continue;
+      const qty = parseInt(item.quantity) || 0;
+      if (qty <= 0) continue;
+      const { data: prod } = await supabase.from('products').select('stock').eq('id', item.id).single();
+      if (prod) {
+        const newStock = Math.max(0, (prod.stock || 0) - qty);
+        await supabase.from('products').update({ stock: newStock }).eq('id', item.id);
+      }
+    }
+  }
   await logAdminAction({ name: attendant_name || 'Sistema' }, 'create', 'note', noteData?.id, `${type === 'quote' ? 'Orçamento' : 'Venda'} ${number} - ${customer_name}`);
   res.status(201).json(noteData);
 });
@@ -1194,6 +1208,19 @@ app.put('/api/notes/:id', async (req, res) => {
       `${updated.number}: ${oldStatus} → ${updated.status}`,
       { from: oldStatus, to: updated.status }
     );
+    // Restore stock when cancelling a sale
+    if (updated.status === 'cancelled' && updated.type === 'venda') {
+      const cancelItems = parseItems(updated.items);
+      for (const item of cancelItems) {
+        if (item.custom || !item.id) continue;
+        const qty = parseInt(item.quantity) || 0;
+        if (qty <= 0) continue;
+        const { data: prod } = await supabase.from('products').select('stock').eq('id', item.id).single();
+        if (prod) {
+          await supabase.from('products').update({ stock: (prod.stock || 0) + qty }).eq('id', item.id);
+        }
+      }
+    }
   }
   res.json(updated);
 });
