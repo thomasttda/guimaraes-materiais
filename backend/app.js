@@ -1351,6 +1351,8 @@ app.get('/api/customers/:phone/debts', async (req, res) => {
 app.post('/api/caixa/abrir', async (req, res) => {
   const { valor_inicial } = req.body;
   const hoje = new Date().toISOString().slice(0, 10);
+  // Remove any existing fechamento to allow re-opening
+  await supabase.from('app_settings').delete().eq('key', `fechamento_${hoje}`);
   const existing = await queryOne('app_settings', { where: [{ field: 'key', value: `caixa_aberto_${hoje}` }] });
   if (existing) return res.status(400).json({ error: 'Caixa já foi aberto hoje' });
   await supabase.from('app_settings').insert({ key: `caixa_aberto_${hoje}`, value: JSON.stringify({ data: hoje, valor_inicial: valor_inicial || 0, abertoEm: new Date().toISOString() }) }).select();
@@ -1751,9 +1753,11 @@ app.post('/api/financeiro/sangria', async (req, res) => {
 
 app.post('/api/financeiro/fechar-dia', async (req, res) => {
   const { start, end } = todayRange();
-  const key = `fechamento_${start.slice(0, 10)}`;
-  const existing = await queryOne('app_settings', { where: [{ field: 'key', value: key }] });
-  if (existing) return res.status(400).json({ error: 'Dia já foi fechado' });
+  const hoje = start.slice(0, 10);
+  // Check if caixa is open
+  const aberto = await queryOne('app_settings', { where: [{ field: 'key', value: `caixa_aberto_${hoje}` }] });
+  if (!aberto) return res.status(400).json({ error: 'Caixa não está aberto' });
+  const key = `fechamento_${hoje}`;
   const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['draft', 'confirmed', 'sent', 'completed']);
   const vendas = notas || [];
   const total = vendas.reduce((s, n) => s + parseFloat(n.total || 0), 0);
@@ -1768,10 +1772,12 @@ app.post('/api/financeiro/fechar-dia', async (req, res) => {
   const { data: sangrias } = await supabase.from('cash_flow').select('*').gte('created_at', start).lt('created_at', end).eq('category', 'sangria');
   const totalSangrias = (sangrias || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
   const saldoFinal = total - totalSangrias;
-  const valor = JSON.stringify({ data: start.slice(0, 10), total, porPagamento, porVendedor, sangrias: sangrias || [], totalSangrias, saldoFinal, fechadoEm: new Date().toISOString() });
+  const valor = JSON.stringify({ data: hoje, total, porPagamento, porVendedor, sangrias: sangrias || [], totalSangrias, saldoFinal, fechadoEm: new Date().toISOString() });
+  // Upsert: remove existing fechamento first, then insert
+  await supabase.from('app_settings').delete().eq('key', key);
   await supabase.from('app_settings').insert({ key, value: valor }).select();
-  // Remove caixa aberto flag so status reflects closed day
-  await supabase.from('app_settings').delete().eq('key', `caixa_aberto_${start.slice(0, 10)}`);
+  // Remove caixa aberto flag
+  await supabase.from('app_settings').delete().eq('key', `caixa_aberto_${hoje}`);
   res.json({ message: 'Dia fechado com sucesso', total, saldoFinal });
 });
 
