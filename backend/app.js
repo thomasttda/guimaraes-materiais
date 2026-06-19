@@ -1157,7 +1157,7 @@ app.post('/api/notes', async (req, res) => {
   }
   const noteData = data[0];
   // Decrement stock for sale items
-  if (type === 'venda' && items) {
+  if (type === 'sale' && items) {
     try {
       const parsedItems = parseItems(items);
       for (const item of parsedItems) {
@@ -1213,7 +1213,7 @@ app.put('/api/notes/:id', async (req, res) => {
       { from: oldStatus, to: updated.status }
     );
     // Restore stock when cancelling a sale
-    if (updated.status === 'cancelled' && updated.type === 'venda') {
+    if (updated.status === 'cancelled' && updated.type === 'sale') {
       const cancelItems = parseItems(updated.items);
       for (const item of cancelItems) {
         if (item.custom || !item.id) continue;
