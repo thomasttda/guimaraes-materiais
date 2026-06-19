@@ -1164,10 +1164,17 @@ app.post('/api/notes', async (req, res) => {
         if (item.custom || !item.id) continue;
         const qty = parseInt(item.quantity) || 0;
         if (qty <= 0) continue;
-        const { data: prod } = await supabase.from('products').select('stock').eq('id', item.id).single();
+        const { data: prod } = await supabase.from('products').select('stock, min_stock, name').eq('id', item.id).single();
         if (prod) {
           const newStock = Math.max(0, (prod.stock || 0) - qty);
           await supabase.from('products').update({ stock: newStock }).eq('id', item.id);
+          if (newStock <= (prod.min_stock || 10) && newStock > 0) {
+            await supabase.from('notifications').insert({
+              type: 'stock_alert', title: 'Estoque baixo!',
+              message: `O produto "${prod.name}" está com estoque baixo (${newStock} unidades)`,
+              reference_id: item.id, reference_type: 'product'
+            }).select();
+          }
         }
       }
     } catch (e) {
@@ -1221,7 +1228,10 @@ app.put('/api/notes/:id', async (req, res) => {
         if (qty <= 0) continue;
         const { data: prod } = await supabase.from('products').select('stock').eq('id', item.id).single();
         if (prod) {
-          await supabase.from('products').update({ stock: (prod.stock || 0) + qty }).eq('id', item.id);
+          const restoredStock = (prod.stock || 0) + qty;
+          await supabase.from('products').update({ stock: restoredStock }).eq('id', item.id);
+          // Mark related stock_alert notifications as read
+          await supabase.from('notifications').update({ read: 1 }).eq('reference_id', item.id).eq('reference_type', 'product').eq('type', 'stock_alert').eq('read', 0);
         }
       }
     }

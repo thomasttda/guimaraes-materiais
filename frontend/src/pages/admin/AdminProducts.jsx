@@ -23,7 +23,7 @@ export default function AdminProducts() {
   const [stockResult, setStockResult] = useState(null);
   const [stockCreateMissing, setStockCreateMissing] = useState(false);
   const [form, setForm] = useState({
-    name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0,
+    name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10,
   });
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function AdminProducts() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { ...form, price: parseFloat(form.price), stock: parseInt(form.stock) || 0 };
+    const payload = { ...form, price: parseFloat(form.price), stock: parseInt(form.stock) || 0, min_stock: parseInt(form.min_stock) || 10 };
 
     try {
       const url = editing ? `${API_URL}/products/${editing}` : `${API_URL}/products`;
@@ -73,6 +73,7 @@ export default function AdminProducts() {
       category: product.category,
       featured: product.featured === 1,
       stock: product.stock,
+      min_stock: product.min_stock || 10,
     });
     setShowForm(true);
   };
@@ -254,10 +255,14 @@ export default function AdminProducts() {
                     {categories.map(c => <option key={c} value={c} />)}
                   </datalist>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Estoque</label>
                     <input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} className="input-field" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Estoque Mínimo</label>
+                    <input type="number" value={form.min_stock} onChange={e => setForm({...form, min_stock: e.target.value})} className="input-field" title="Abaixo desse valor, um alerta de reposição será disparado" />
                   </div>
                   <div className="flex items-center pt-6">
                     <label className="flex items-center gap-2 cursor-pointer">
