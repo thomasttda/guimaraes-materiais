@@ -408,7 +408,7 @@ function Caixa() {
             </div>
           </div>
           <div className="flex gap-2">
-            {!caixaStatus?.aberto && !caixaStatus?.fechado && (
+            {!caixaStatus?.aberto && (
               <button onClick={() => setShowAbrir(true)} className="btn-primary flex items-center gap-1 text-sm">
                 <Sun className="w-4 h-4" /> Abrir Caixa
               </button>
