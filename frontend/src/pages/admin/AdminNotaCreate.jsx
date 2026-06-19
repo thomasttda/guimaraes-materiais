@@ -166,7 +166,6 @@ export default function AdminNotaCreate() {
   };
 
   const handleSaveDraft = async () => {
-    if (!note.customer_name) { alert('Preencha o nome do cliente'); return; }
     if (note.items.length === 0) { alert('Adicione pelo menos um item'); return; }
     try {
       const data = await saveNote('draft');
@@ -175,7 +174,6 @@ export default function AdminNotaCreate() {
   };
 
   const handleFinishClick = () => {
-    if (!note.customer_name) { alert('Preencha o nome do cliente'); return; }
     if (note.items.length === 0) { alert('Adicione pelo menos um item'); return; }
     setShowConfirmModal(true);
   };
@@ -291,7 +289,7 @@ export default function AdminNotaCreate() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nome *</label>
+                  <label className="block text-sm font-medium mb-1">Nome</label>
                   <input type="text" value={note.customer_name} onChange={e => setNote({...note, customer_name: e.target.value})} className="input-field" />
                 </div>
                 <div>
