@@ -1770,6 +1770,8 @@ app.post('/api/financeiro/fechar-dia', async (req, res) => {
   const saldoFinal = total - totalSangrias;
   const valor = JSON.stringify({ data: start.slice(0, 10), total, porPagamento, porVendedor, sangrias: sangrias || [], totalSangrias, saldoFinal, fechadoEm: new Date().toISOString() });
   await supabase.from('app_settings').insert({ key, value: valor }).select();
+  // Remove caixa aberto flag so status reflects closed day
+  await supabase.from('app_settings').delete().eq('key', `caixa_aberto_${start.slice(0, 10)}`);
   res.json({ message: 'Dia fechado com sucesso', total, saldoFinal });
 });
 
