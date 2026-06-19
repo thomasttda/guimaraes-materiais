@@ -70,6 +70,13 @@ export default function AdminNotaCreate() {
     }
   }, [editId]);
 
+  const calculateTotals = () => {
+    const subtotal = note.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : (note.discount || 0);
+    const total = Math.max(0, subtotal - discountAmount);
+    return { subtotal, total };
+  };
+
   let { subtotal, total } = calculateTotals();
   const totalComTaxa = total + parseFloat(note.credit_fee || 0);
 
@@ -140,13 +147,6 @@ export default function AdminNotaCreate() {
       customer_cpf: customer.cpf || ''
     }));
     setShowCustomerModal(false);
-  };
-
-  const calculateTotals = () => {
-    const subtotal = note.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discountAmount = note.discount_type === 'percentage' ? subtotal * (note.discount / 100) : (note.discount || 0);
-    const total = Math.max(0, subtotal - discountAmount);
-    return { subtotal, total };
   };
 
   const saveNote = async (status) => {
