@@ -49,3 +49,31 @@ ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, password = EXCLUDED.pass
 
 -- 8) Adicionar coluna note_id na tabela deliveries (para vincular entregas a notas)
 ALTER TABLE IF EXISTS deliveries ADD COLUMN IF NOT EXISTS note_id INTEGER REFERENCES notes(id) ON DELETE CASCADE;
+
+-- 9) Tabela de funcionários
+CREATE TABLE IF NOT EXISTS employees (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT,
+  role TEXT DEFAULT 'funcionario',
+  salary NUMERIC(10,2) DEFAULT 0,
+  active INTEGER DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10) Tabela de despesas de funcionários
+CREATE TABLE IF NOT EXISTS employee_expenses (
+  id SERIAL PRIMARY KEY,
+  employee_id INTEGER REFERENCES employees(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK(category IN ('Vale','Gasolina','Passagem','Salário','Alimentação','Ferramentas','Outro')),
+  description TEXT,
+  amount NUMERIC(10,2) NOT NULL,
+  date DATE DEFAULT CURRENT_DATE,
+  payment_method TEXT DEFAULT 'dinheiro',
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_emp_exp_employee ON employee_expenses(employee_id);
+CREATE INDEX IF NOT EXISTS idx_emp_exp_date ON employee_expenses(date DESC);

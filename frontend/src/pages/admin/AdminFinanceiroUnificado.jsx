@@ -4,7 +4,7 @@ import {
   ArrowLeft, Plus, Edit2, Trash2, Filter,
   TrendingUp, TrendingDown, DollarSign,
   Printer, X, CreditCard, Smartphone, Banknote, Receipt, User, LogOut,
-  Calendar, Sun, Moon, Package, AlertTriangle, Truck, FileText
+  Calendar, Sun, Moon, Package, AlertTriangle, Truck, FileText, Users
 } from 'lucide-react';
 
 const API_URL = '/api';
@@ -36,6 +36,7 @@ export default function AdminFinanceiroUnificado() {
             {tab === 'relatorio' && <RelatorioActions />}
             {tab === 'caixa' && <CaixaActions />}
             {tab === 'lancamentos' && <LancamentosActions />}
+            {tab === 'funcionarios' && <FuncionariosActions />}
           </div>
         </div>
         {/* Sub-tabs */}
@@ -45,6 +46,7 @@ export default function AdminFinanceiroUnificado() {
               { key: 'relatorio', label: 'Relatório de Vendas', icon: Receipt },
               { key: 'caixa', label: 'Caixa', icon: DollarSign },
               { key: 'lancamentos', label: 'Lançamentos', icon: TrendingUp },
+              { key: 'funcionarios', label: 'Funcionários', icon: Users },
             ].map(t => {
               const Icon = t.icon;
               return (
@@ -67,6 +69,7 @@ export default function AdminFinanceiroUnificado() {
         {tab === 'relatorio' && <RelatorioVendas />}
         {tab === 'caixa' && <Caixa />}
         {tab === 'lancamentos' && <Lancamentos />}
+        {tab === 'funcionarios' && <Funcionarios />}
       </div>
     </div>
   );
@@ -803,6 +806,290 @@ function Lancamentos() {
         </div>
         {entries.length === 0 && <p className="text-center py-8 text-gray-500">Nenhum lançamento encontrado</p>}
       </div>
+    </div>
+  );
+}
+
+const expenseCategories = ['Vale', 'Gasolina', 'Passagem', 'Salário', 'Alimentação', 'Ferramentas', 'Outro'];
+
+function FuncionariosActions() {
+  const [showForm, setShowFormInternal] = useState(false);
+  window.__funcActions = { showForm, setShowFormInternal };
+  return (
+    <button onClick={() => { const a = window.__funcActions; if (a) a.setShowFormInternal(true); }} className="btn-primary flex items-center gap-2">
+      <Plus className="w-5 h-5" /> Novo Funcionário
+    </button>
+  );
+}
+
+function Funcionarios() {
+  const [employees, setEmployees] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name: '', phone: '', role: 'funcionario', salary: '' });
+  const [selectedEmp, setSelectedEmp] = useState(null);
+
+  useEffect(() => { window.__funcActions = { ...(window.__funcActions || {}), setShowFormInternal: setShowForm }; }, []);
+
+  const fetchEmployees = () => fetch(`${API_URL}/employees`).then(r => r.json()).then(setEmployees).catch(() => {});
+  useEffect(() => { fetchEmployees(); }, []);
+
+  const resetForm = () => { setForm({ name: '', phone: '', role: 'funcionario', salary: '' }); setEditing(null); setShowForm(false); };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const payload = { ...form, salary: parseFloat(form.salary) || 0 };
+    if (editing) {
+      await fetch(`${API_URL}/employees/${editing}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } else {
+      await fetch(`${API_URL}/employees`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    }
+    fetchEmployees();
+    resetForm();
+  };
+
+  const handleEdit = (emp) => {
+    setEditing(emp.id);
+    setForm({ name: emp.name, phone: emp.phone || '', role: emp.role || 'funcionario', salary: emp.salary?.toString() || '' });
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Remover funcionário?')) return;
+    await fetch(`${API_URL}/employees/${id}`, { method: 'DELETE' });
+    fetchEmployees();
+  };
+
+  if (selectedEmp) return <EmployeeDetail employee={selectedEmp} onBack={() => setSelectedEmp(null)} />;
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="card p-4">
+          <p className="text-2xl font-bold">{employees.length}</p>
+          <p className="text-sm text-gray-500">Funcionários</p>
+        </div>
+      </div>
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Nome</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Telefone</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Cargo</th>
+                <th className="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map(emp => (
+                <tr key={emp.id} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedEmp(emp)}>
+                  <td className="px-4 py-3 text-sm font-medium">{emp.name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{emp.phone || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{emp.role || 'funcionario'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={(e) => { e.stopPropagation(); handleEdit(emp); }} className="text-blue-600 hover:text-blue-800 mr-2"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(emp.id); }} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {employees.length === 0 && <p className="text-center py-8 text-gray-500">Nenhum funcionário cadastrado</p>}
+      </div>
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h2 className="text-xl font-bold">{editing ? 'Editar Funcionário' : 'Novo Funcionário'}</h2>
+              <button onClick={resetForm}><X className="w-6 h-6 text-gray-400" /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nome *</label>
+                <input type="text" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required className="input-field" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Telefone</label>
+                <input type="text" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Cargo</label>
+                <input type="text" value={form.role} onChange={e => setForm({...form, role: e.target.value})} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Salário</label>
+                <input type="number" step="0.01" value={form.salary} onChange={e => setForm({...form, salary: e.target.value})} className="input-field" />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={resetForm} className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+                <button type="submit" className="flex-1 btn-primary">{editing ? 'Salvar' : 'Adicionar'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmployeeDetail({ employee, onBack }) {
+  const [expenses, setExpenses] = useState([]);
+  const [summary, setSummary] = useState({ total: 0, count: 0, byCategory: {} });
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ category: 'Vale', description: '', amount: '', date: new Date().toISOString().slice(0, 10), payment_method: 'dinheiro', notes: '' });
+  const [filterCat, setFilterCat] = useState('');
+
+  const fetchExpenses = () => {
+    fetch(`${API_URL}/employees/${employee.id}/expenses`).then(r => r.json()).then(setExpenses).catch(() => {});
+    fetch(`${API_URL}/employees/${employee.id}/summary`).then(r => r.json()).then(s => { if (s) setSummary(s); }).catch(() => {});
+  };
+  useEffect(() => { fetchExpenses(); }, [employee.id]);
+
+  const resetForm = () => {
+    setForm({ category: 'Vale', description: '', amount: '', date: new Date().toISOString().slice(0, 10), payment_method: 'dinheiro', notes: '' });
+    setEditing(null);
+    setShowForm(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const payload = { ...form, amount: parseFloat(form.amount) || 0 };
+    if (editing) {
+      await fetch(`${API_URL}/employee-expenses/${editing}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } else {
+      await fetch(`${API_URL}/employees/${employee.id}/expenses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    }
+    fetchExpenses();
+    resetForm();
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Remover despesa?')) return;
+    await fetch(`${API_URL}/employee-expenses/${id}`, { method: 'DELETE' });
+    fetchExpenses();
+  };
+
+  const filtered = filterCat ? expenses.filter(e => e.category === filterCat) : expenses;
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={onBack} className="text-gray-600 hover:text-primary-600"><ArrowLeft className="w-5 h-5" /></button>
+        <h2 className="text-xl font-bold">{employee.name}</h2>
+        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">{employee.role}</span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="card p-4">
+          <p className="text-2xl font-bold text-red-600">{FMT(summary.total)}</p>
+          <p className="text-sm text-gray-500">Total de Despesas</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-2xl font-bold">{summary.count || 0}</p>
+          <p className="text-sm text-gray-500">Lançamentos</p>
+        </div>
+        <div className="card p-4">
+          <p className="text-sm font-medium text-gray-600 mb-2">Por Categoria</p>
+          {expenseCategories.map(cat => (
+            summary.byCategory[cat] ? <div key={cat} className="flex justify-between text-xs mb-1"><span>{cat}</span><span className="font-medium">{FMT(summary.byCategory[cat])}</span></div> : null
+          ))}
+        </div>
+        <div className="card p-4 flex items-center justify-center">
+          <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2"><Plus className="w-5 h-5" /> Nova Despesa</button>
+        </div>
+      </div>
+      <div className="card overflow-hidden">
+        <div className="p-4 border-b flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-600">Filtrar:</span>
+          <button onClick={() => setFilterCat('')} className={`px-3 py-1 rounded-full text-xs font-medium ${!filterCat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Todas</button>
+          {expenseCategories.map(cat => (
+            <button key={cat} onClick={() => setFilterCat(cat)} className={`px-3 py-1 rounded-full text-xs font-medium ${filterCat === cat ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{cat}</button>
+          ))}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Data</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Categoria</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Descrição</th>
+                <th className="text-right px-4 py-3 text-sm font-medium text-gray-600">Valor</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Pagamento</th>
+                <th className="px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(exp => (
+                <tr key={exp.id} className="border-t hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm">{new Date(exp.date).toLocaleDateString('pt-BR')}</td>
+                  <td className="px-4 py-3 text-sm"><span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">{exp.category}</span></td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{exp.description || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-right font-medium text-red-600">{FMT(exp.amount)}</td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{exp.payment_method}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => { setEditing(exp.id); setForm({ category: exp.category, description: exp.description || '', amount: exp.amount.toString(), date: exp.date, payment_method: exp.payment_method || 'dinheiro', notes: exp.notes || '' }); setShowForm(true); }} className="text-blue-600 hover:text-blue-800 mr-2"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(exp.id)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {filtered.length === 0 && <p className="text-center py-8 text-gray-500">Nenhuma despesa encontrada</p>}
+      </div>
+      {showForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg">
+            <div className="p-6 border-b flex items-center justify-between">
+              <h2 className="text-xl font-bold">{editing ? 'Editar Despesa' : 'Nova Despesa'}</h2>
+              <button onClick={resetForm}><X className="w-6 h-6 text-gray-400" /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Categoria *</label>
+                  <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} required className="input-field">
+                    {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Data</label>
+                  <input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="input-field" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Descrição</label>
+                <input type="text" value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="input-field" placeholder="Ex: Vale transporte" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Valor</label>
+                  <input type="number" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} required className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Pagamento</label>
+                  <select value={form.payment_method} onChange={e => setForm({...form, payment_method: e.target.value})} className="input-field">
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="pix">PIX</option>
+                    <option value="cartao">Cartão</option>
+                    <option value="transferencia">Transferência</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Observações</label>
+                <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} className="input-field" />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={resetForm} className="flex-1 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+                <button type="submit" className="flex-1 btn-primary">{editing ? 'Salvar' : 'Adicionar'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

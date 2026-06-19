@@ -450,6 +450,93 @@ app.delete('/api/cash-flow/:id', async (req, res) => {
   res.json({ message: 'Registro removido' });
 });
 
+// ==================== EMPLOYEES ====================
+
+app.get('/api/employees', async (req, res) => {
+  const { active } = req.query;
+  const where = [];
+  if (active === 'true') where.push({ field: 'active', value: 1 });
+  const data = await queryAll('employees', { where, order: { field: 'name', ascending: true } });
+  res.json(data);
+});
+
+app.post('/api/employees', async (req, res) => {
+  const { name, phone, role, salary } = req.body;
+  const data = await insert('employees', { name, phone: phone || '', role: role || 'funcionario', salary: salary || 0 });
+  res.status(201).json(data[0]);
+});
+
+app.put('/api/employees/:id', async (req, res) => {
+  const { name, phone, role, salary, active } = req.body;
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (phone !== undefined) updates.phone = phone;
+  if (role !== undefined) updates.role = role;
+  if (salary !== undefined) updates.salary = salary;
+  if (active !== undefined) updates.active = active;
+  updates.updated_at = new Date().toISOString();
+  const data = await update('employees', updates, 'id', req.params.id);
+  if (!data.length) return res.status(404).json({ error: 'Funcionário não encontrado' });
+  res.json(data[0]);
+});
+
+app.delete('/api/employees/:id', async (req, res) => {
+  await remove('employees', 'id', req.params.id);
+  res.json({ message: 'Funcionário removido' });
+});
+
+// ==================== EMPLOYEE EXPENSES ====================
+
+app.get('/api/employees/:employeeId/expenses', async (req, res) => {
+  const { start_date, end_date } = req.query;
+  const where = [{ field: 'employee_id', value: req.params.employeeId }];
+  if (start_date) where.push({ field: 'date', op: 'gte', value: start_date });
+  if (end_date) where.push({ field: 'date', op: 'lte', value: end_date });
+  const data = await queryAll('employee_expenses', { where, order: { field: 'date', ascending: false } });
+  res.json(data);
+});
+
+app.post('/api/employees/:employeeId/expenses', async (req, res) => {
+  const { category, description, amount, date, payment_method, notes } = req.body;
+  const data = await insert('employee_expenses', {
+    employee_id: req.params.employeeId, category, description: description || '',
+    amount, date: date || new Date().toISOString().slice(0, 10),
+    payment_method: payment_method || 'dinheiro', notes: notes || ''
+  });
+  res.status(201).json(data[0]);
+});
+
+app.put('/api/employee-expenses/:id', async (req, res) => {
+  const { category, description, amount, date, payment_method, notes } = req.body;
+  const updates = {};
+  if (category !== undefined) updates.category = category;
+  if (description !== undefined) updates.description = description;
+  if (amount !== undefined) updates.amount = amount;
+  if (date !== undefined) updates.date = date;
+  if (payment_method !== undefined) updates.payment_method = payment_method;
+  if (notes !== undefined) updates.notes = notes;
+  const data = await update('employee_expenses', updates, 'id', req.params.id);
+  if (!data.length) return res.status(404).json({ error: 'Despesa não encontrada' });
+  res.json(data[0]);
+});
+
+app.delete('/api/employee-expenses/:id', async (req, res) => {
+  await remove('employee_expenses', 'id', req.params.id);
+  res.json({ message: 'Despesa removida' });
+});
+
+app.get('/api/employees/:employeeId/summary', async (req, res) => {
+  const { start_date, end_date } = req.query;
+  const where = [{ field: 'employee_id', value: req.params.employeeId }];
+  if (start_date) where.push({ field: 'date', op: 'gte', value: start_date });
+  if (end_date) where.push({ field: 'date', op: 'lte', value: end_date });
+  const data = await queryAll('employee_expenses', { where });
+  const total = data.reduce((s, e) => s + (e.amount || 0), 0);
+  const byCategory = {};
+  data.forEach(e => { byCategory[e.category] = (byCategory[e.category] || 0) + (e.amount || 0); });
+  res.json({ total, count: data.length, byCategory });
+});
+
 // ==================== BILLS ====================
 
 app.get('/api/bills', async (req, res) => {
