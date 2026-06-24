@@ -1726,8 +1726,17 @@ const todayRange = () => {
 };
 
 app.get('/api/financeiro/resumo', async (req, res) => {
-  const { start, end } = todayRange();
-  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lt('created_at', end).in('status', ['draft', 'confirmed', 'sent', 'completed']);
+  const { start_date, end_date } = req.query;
+  let start, end;
+  if (start_date && end_date) {
+    start = start_date + 'T00:00:00';
+    end = end_date + 'T23:59:59';
+  } else {
+    const r = todayRange();
+    start = r.start;
+    end = r.end;
+  }
+  const { data: notas } = await supabase.from('notes').select('*').gte('created_at', start).lte('created_at', end).in('status', ['draft', 'confirmed', 'sent', 'completed']);
   const vendas = notas || [];
   const total = vendas.reduce((s, n) => s + parseFloat(n.total || 0), 0);
   const porPagamento = {};
@@ -1738,9 +1747,9 @@ app.get('/api/financeiro/resumo', async (req, res) => {
     const vendedor = n.attendant_name || 'Sem vendedor';
     porVendedor[vendedor] = (porVendedor[vendedor] || 0) + parseFloat(n.total || 0);
   }
-  const { data: sangrias } = await supabase.from('cash_flow').select('*').gte('created_at', start).lt('created_at', end).eq('category', 'sangria');
+  const { data: sangrias } = await supabase.from('cash_flow').select('*').gte('created_at', start).lte('created_at', end).eq('category', 'sangria');
   const totalSangrias = (sangrias || []).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-  const { data: fechamento } = await supabase.from('app_settings').select('value').eq('key', `fechamento_${start.slice(0, 10)}`).single();
+  const { data: fechamento } = await supabase.from('app_settings').select('value').eq('key', `fechamento_${(start_date || start).slice(0, 10)}`).single();
   res.json({ total, porPagamento, porVendedor, sangrias: sangrias || [], totalSangrias, fechado: !!fechamento });
 });
 

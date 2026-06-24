@@ -94,7 +94,7 @@ function RelatorioVendas() {
       const data = await fetch(`${API_URL}/financeiro/resumo?${p}`).then(r => r.json());
       setResumo(data);
       // Fetch detailed notas for this period
-      const p2 = new URLSearchParams({ start_date: start, end_date: end + 'T23:59:59' });
+      const p2 = new URLSearchParams({ start_date: start, end_date: end });
       const notas = await fetch(`${API_URL}/notes?${p2}`).then(r => r.json()).catch(() => []);
       setVendasDetalhadas(notas);
     } catch {}
