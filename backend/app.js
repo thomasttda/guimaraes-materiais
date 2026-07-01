@@ -1631,8 +1631,8 @@ app.put('/api/settings/:key', async (req, res) => {
 
 app.get('/api/dashboard', async (req, res) => {
   const { count: totalProducts } = await supabase.from('products').select('*', { count: 'exact', head: true });
-  const { count: totalQuotes } = await supabase.from('quotes').select('*', { count: 'exact', head: true });
-  const { count: pendingQuotes } = await supabase.from('quotes').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+  const { count: totalQuotes } = await supabase.from('notes').select('*', { count: 'exact', head: true }).eq('type', 'quote');
+  const { count: pendingQuotes } = await supabase.from('notes').select('*', { count: 'exact', head: true }).eq('type', 'quote').in('status', ['draft', 'pending_approval', 'sent']);
   const { count: totalOrders } = await supabase.from('orders').select('*', { count: 'exact', head: true });
   // Revenue from confirmed/completed notas (current system)
   const { data: notasRevenue } = await supabase.from('notes').select('total').neq('status', 'cancelled');
@@ -1677,8 +1677,11 @@ app.get('/api/dashboard', async (req, res) => {
   (catData || []).forEach(p => { catCount[p.category] = (catCount[p.category] || 0) + 1; });
   const categories = Object.entries(catCount).sort((a, b) => b[1] - a[1]).map(([category, count]) => ({ category, count }));
   const { count: unreadNotifications } = await supabase.from('notifications').select('*', { count: 'exact', head: true }).eq('read', 0);
+  const { data: fiadoNotes } = await supabase.from('notes').select('total').eq('payment_method', 'Fiado').neq('status', 'cancelled');
+  const fiadoCount = fiadoNotes?.length || 0;
+  const fiadoAmount = fiadoNotes?.reduce((s, n) => s + (n.total || 0), 0) || 0;
 
-  res.json({ totalProducts, totalQuotes, pendingQuotes, totalOrders, totalRevenue, todayRevenue, cashBalance, totalIncome, totalExpense, pendingBills, overdueBills, totalBillsAmount, pendingDeliveries, totalNotes, lowStock: lowStock.data || [], monthlyRevenue, topProducts: topProducts.data || [], categories, unreadNotifications });
+  res.json({ totalProducts, totalQuotes, pendingQuotes, totalOrders, totalRevenue, todayRevenue, cashBalance, totalIncome, totalExpense, pendingBills, overdueBills, totalBillsAmount, pendingDeliveries, totalNotes, lowStock: lowStock.data || [], monthlyRevenue, topProducts: topProducts.data || [], categories, unreadNotifications, fiadoCount, fiadoAmount });
 });
 
 // ==================== CHECK REMINDERS ====================

@@ -15,6 +15,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminFinanceiroUnificado from './pages/admin/AdminFinanceiroUnificado';
 import AdminContas from './pages/admin/AdminContas';
+import AdminFiado from './pages/admin/AdminFiado';
 import AdminEntregas from './pages/admin/AdminEntregas';
 import AdminClientes from './pages/admin/AdminClientes';
 import AdminClienteDetalhe from './pages/admin/AdminClienteDetalhe';
@@ -61,6 +62,7 @@ function App() {
             <Route path="/admin/configuracoes" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
             <Route path="/admin/financeiro" element={<ProtectedRoute><AdminFinanceiroUnificado /></ProtectedRoute>} />
             <Route path="/admin/contas" element={<ProtectedRoute><AdminContas /></ProtectedRoute>} />
+            <Route path="/admin/fiado" element={<ProtectedRoute><AdminFiado /></ProtectedRoute>} />
             <Route path="/admin/entregas" element={<ProtectedRoute><AdminEntregas /></ProtectedRoute>} />
             <Route path="/admin/clientes" element={<ProtectedRoute><AdminClientes /></ProtectedRoute>} />
 <Route path="/admin/clientes/:id" element={<ProtectedRoute><AdminClienteDetalhe /></ProtectedRoute>} />

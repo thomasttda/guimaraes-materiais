@@ -57,6 +57,7 @@ export default function Admin() {
     { label: 'Entregas Pendentes', value: stats.pendingDeliveries, icon: Truck, color: 'bg-indigo-500', link: '/admin/entregas' },
     { label: 'Contas a Pagar', value: stats.pendingBills, icon: Calendar, color: 'bg-orange-500', link: '/admin/contas' },
     { label: 'Notas', value: stats.totalNotes, icon: Receipt, color: 'bg-amber-500', link: '/admin/notas' },
+    { label: 'Fiado', value: `${stats.fiadoCount} (R$ ${(stats.fiadoAmount || 0).toFixed(2).replace('.', ',')})`, icon: DollarSign, color: 'bg-purple-500', link: '/admin/fiado' },
     { label: 'Clientes', value: '-', icon: Users, color: 'bg-teal-500', link: '/admin/clientes' },
     { label: 'Vendedores', value: '-', icon: UserCheck, color: 'bg-indigo-500', link: '/admin/vendedores' },
   ];
