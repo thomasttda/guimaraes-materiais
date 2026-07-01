@@ -23,7 +23,7 @@ export default function AdminProducts() {
   const [stockResult, setStockResult] = useState(null);
   const [stockCreateMissing, setStockCreateMissing] = useState(false);
   const [form, setForm] = useState({
-    name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10, image: '',
+    name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10, image: '', imageUrl: '',
   });
 
   useEffect(() => {
@@ -75,6 +75,7 @@ export default function AdminProducts() {
       stock: product.stock,
       min_stock: product.min_stock || 10,
       image: product.image || '',
+      imageUrl: product.image?.startsWith('http') ? product.image : '',
     });
     setShowForm(true);
   };
@@ -90,7 +91,7 @@ export default function AdminProducts() {
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10, image: '' });
+    setForm({ name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10, image: '', imageUrl: '' });
     setEditing(null);
     setShowForm(false);
   };
@@ -232,19 +233,31 @@ export default function AdminProducts() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Imagem</label>
                   <div className="flex items-start gap-4">
-                    <div className="flex-1">
-                      <input type="file" accept="image/*" onChange={e => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (ev) => setForm({...form, image: ev.target.result});
-                        reader.readAsDataURL(file);
-                      }} className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer" />
-                      {form.image && <button type="button" onClick={() => setForm({...form, image: ''})} className="text-xs text-red-600 hover:text-red-800 mt-1">Remover imagem</button>}
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Upload de arquivo</label>
+                        <input type="file" accept="image/*" onChange={e => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setForm({...form, image: ev.target.result, imageUrl: ''});
+                          reader.readAsDataURL(file);
+                        }} className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer" />
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span className="flex-1 h-px bg-gray-200" />
+                        <span>ou URL</span>
+                        <span className="flex-1 h-px bg-gray-200" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">URL da imagem</label>
+                        <input type="url" placeholder="https://..." value={form.imageUrl || ''} onChange={e => setForm({...form, imageUrl: e.target.value, image: e.target.value})} className="input-field text-sm" />
+                      </div>
+                      {(form.image || form.imageUrl) && <button type="button" onClick={() => setForm({...form, image: '', imageUrl: ''})} className="text-xs text-red-600 hover:text-red-800">Remover imagem</button>}
                     </div>
-                    {form.image && (
+                    {(form.image || form.imageUrl) && (
                       <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
-                        <img src={form.image} alt="Preview" className="w-full h-full object-cover" />
+                        <img src={form.image || form.imageUrl} alt="Preview" className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none' }} />
                       </div>
                     )}
                   </div>
