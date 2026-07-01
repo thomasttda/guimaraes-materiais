@@ -25,8 +25,12 @@ export default function ProductDetail() {
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* Image */}
-        <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl h-64 md:h-96 flex items-center justify-center">
-          <span className="text-8xl"></span>
+        <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl h-64 md:h-96 flex items-center justify-center overflow-hidden">
+          {product.image ? (
+            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-8xl"></span>
+          )}
         </div>
 
         {/* Details */}

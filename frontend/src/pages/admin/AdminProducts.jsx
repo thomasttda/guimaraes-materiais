@@ -23,7 +23,7 @@ export default function AdminProducts() {
   const [stockResult, setStockResult] = useState(null);
   const [stockCreateMissing, setStockCreateMissing] = useState(false);
   const [form, setForm] = useState({
-    name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10,
+    name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10, image: '',
   });
 
   useEffect(() => {
@@ -74,6 +74,7 @@ export default function AdminProducts() {
       featured: product.featured === 1,
       stock: product.stock,
       min_stock: product.min_stock || 10,
+      image: product.image || '',
     });
     setShowForm(true);
   };
@@ -89,7 +90,7 @@ export default function AdminProducts() {
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0 });
+    setForm({ name: '', description: '', price: '', unit: 'UND', category: '', featured: false, stock: 0, min_stock: 10, image: '' });
     setEditing(null);
     setShowForm(false);
   };
@@ -227,6 +228,26 @@ export default function AdminProducts() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Descrição</label>
                   <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Imagem</label>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <input type="file" accept="image/*" onChange={e => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setForm({...form, image: ev.target.result});
+                        reader.readAsDataURL(file);
+                      }} className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 cursor-pointer" />
+                      {form.image && <button type="button" onClick={() => setForm({...form, image: ''})} className="text-xs text-red-600 hover:text-red-800 mt-1">Remover imagem</button>}
+                    </div>
+                    {form.image && (
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+                        <img src={form.image} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -493,6 +514,7 @@ export default function AdminProducts() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Imagem</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Produto</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Categoria</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-600">Preço</th>
@@ -504,6 +526,13 @@ export default function AdminProducts() {
               <tbody>
                 {filtered.map(product => (
                   <tr key={product.id} className="border-t hover:bg-gray-50">
+                    <td className="px-4 py-2">
+                      {product.image ? (
+                        <img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">Sem img</div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-sm">{product.name}</p>
                       <p className="text-xs text-gray-500 truncate max-w-xs">{product.description}</p>

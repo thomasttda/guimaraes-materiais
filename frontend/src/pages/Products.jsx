@@ -91,8 +91,12 @@ export default function Products() {
           {products.map(product => (
             <div key={product.id} className="card hover:shadow-xl transition-shadow">
               <Link to={`/produto/${product.id}`}>
-                <div className="bg-gradient-to-br from-gray-100 to-gray-200 h-40 flex items-center justify-center">
-                  <span className="text-5xl"></span>
+                <div className="bg-gradient-to-br from-gray-100 to-gray-200 h-40 flex items-center justify-center overflow-hidden">
+                  {product.image ? (
+                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-5xl"></span>
+                  )}
                 </div>
               </Link>
               <div className="p-4">
